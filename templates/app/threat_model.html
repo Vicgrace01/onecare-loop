@@ -1,0 +1,109 @@
+{% extends "app/base.html" %}
+{% block title %}Threat model — OneCare Loop{% endblock %}
+{% block page_title %}Threat model{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Threat model</h2>
+    <p>STRIDE analysis of the ledger, the state machine, and the patient receipt.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">Assets</h3>
+  <table class="data-table">
+    <thead><tr><th>Asset</th><th>Classification</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>Care event chain (per patient)</td><td>Confidential · Integrity-critical</td><td>Source of truth for whether care happened</td></tr>
+      <tr><td>Consent record</td><td>Confidential · Integrity-critical</td><td>Legal basis for processing</td></tr>
+      <tr><td>Contact details</td><td>Confidential · Special handling</td><td>Enables outreach; erasure target</td></tr>
+      <tr><td>Eligibility decision</td><td>Confidential · Financial</td><td>Determines who pays</td></tr>
+      <tr><td>Clinical disposition</td><td>Confidential · Clinical</td><td>Closes the loop; clinical record</td></tr>
+      <tr><td>Session tokens</td><td>High-value · Short-lived</td><td>Compromise = full access</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">Actors & trust boundaries</h3>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);">
+    <li><strong>Trusted:</strong> authenticated hospital / pharmacy / clinician actors, platform admin</li>
+    <li><strong>Semi-trusted:</strong> patient (accesses own receipt only, phone-OTP gated)</li>
+    <li><strong>Untrusted:</strong> public internet, unauthenticated requests, the payer's read-only dashboard (view-scoped)</li>
+    <li><strong>Boundary 1:</strong> between the browser and the Flask app (HTTPS in prod)</li>
+    <li><strong>Boundary 2:</strong> between Flask and the database (localhost / private network)</li>
+    <li><strong>Boundary 3:</strong> between OneCare and external services (DHIN, Twilio) — all mocked in demo, all circuit-broken</li>
+  </ul>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">STRIDE threats</h3>
+
+  <div style="font-weight:600; margin-top:12px; margin-bottom:6px;">Spoofing</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Attacker logs in as a hospital</td><td>Session-based auth; password hashing; rate-limit on login (BUILD: hashing + session)</td><td>Medium until MFA lands</td></tr>
+      <tr><td>Attacker calls an API with a forged actor_id</td><td>Session user is authoritative; actor_id is cross-checked against session role</td><td>Low</td></tr>
+      <tr><td>Attacker views another patient's receipt</td><td>Patient_id is unguessable UUID; OTP gate is BUILD for patient view</td><td>Low</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:600; margin-top:20px; margin-bottom:6px;">Tampering</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Insider edits an event payload directly in DB</td><td>SHA-256 chain detects on next verify; ledger head is a second check</td><td>Low — detectable</td></tr>
+      <tr><td>Insider deletes an event</td><td>Seq gap breaks verification; ledger head mismatch also fires</td><td>Low — detectable</td></tr>
+      <tr><td>Insider rewrites the full chain + head</td><td>Detectable only via external anchoring (COMING SOON: OpenTimestamps)</td><td><strong>This is the honest boundary. We do not claim to prevent this today.</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:600; margin-top:20px; margin-bottom:6px;">Repudiation</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Actor denies performing a transition</td><td>Event stores actor_id + role + timestamp; per-actor Ed25519 signing is COMING SOON</td><td>Low today, zero with signing</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:600; margin-top:20px; margin-bottom:6px;">Information disclosure</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Phone number leaks in logs</td><td>Logs contain patient_id only</td><td>Low</td></tr>
+      <tr><td>Export endpoint scraped</td><td>Export requires auth in prod; audit-logged; per-patient pagination is COMING SOON</td><td>Medium — flagged</td></tr>
+      <tr><td>Inference from metadata</td><td>Timestamps + urgency correlate with disease severity; not hidden, documented in DPIA</td><td>Accepted</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:600; margin-top:20px; margin-bottom:6px;">Denial of service</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Flood /api/screening</td><td>Rate limiting is COMING SOON; Render free tier has soft limits</td><td>Medium until rate limit ships</td></tr>
+      <tr><td>Chain-verification loop exhausts CPU</td><td>Per-patient verification only; full-chain verify is admin-only</td><td>Low</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:600; margin-top:20px; margin-bottom:6px;">Elevation of privilege</div>
+  <table class="data-table">
+    <thead><tr><th>Threat</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Patient escalates to write state</td><td>No patient-facing endpoint writes to the chain; hospital attestation is required for every transition</td><td>Low — architectural</td></tr>
+      <tr><td>Pharmacy writes a hospital-only transition</td><td>State machine guards check actor_role per transition</td><td>Low — test-enforced</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:12px;">Residual risks we accept — explicitly</h3>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);">
+    <li><strong>Full-chain rewrite by DB superuser.</strong> Detected only by external anchoring. Deferred.</li>
+    <li><strong>No MFA on hospital accounts.</strong> Deferred to pilot hardening.</li>
+    <li><strong>No rate limiting.</strong> Deferred; documented in pilot plan.</li>
+    <li><strong>Export endpoint lacks pagination.</strong> Deferred; volume is small in demo.</li>
+    <li><strong>Compute runs outside Nigeria during build.</strong> Migration before pilot is a pre-requisite, not a nice-to-have.</li>
+  </ul>
+</div>
+{% endblock %}

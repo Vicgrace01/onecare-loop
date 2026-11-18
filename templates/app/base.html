@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}OneCare Loop{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/app-shell.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a href="/app" class="logo-mark">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+          <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+          <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+        </svg>
+        <span class="logo-word">onecare<span class="dot">.</span>loop</span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <!-- DEMO -->
+      <div class="nav-group-label">Demo · four roles</div>
+      <a href="/demo/pharmacy" class="nav-item {% if active == 'demo_pharmacy' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><path d="M12 8v8M8 12h8"/></svg>
+        <span>Pharmacy</span>
+      </a>
+      <a href="/demo/hospital" class="nav-item {% if active == 'demo_hospital' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01"/></svg>
+        <span>Hospital</span>
+      </a>
+      <a href="/patient/login" class="nav-item {% if active == 'demo_patient' %}active{% endif %}" target="_blank" style="color: var(--peach);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        <span>Patient portal ↗</span>
+      </a>
+      <a href="/app" class="nav-item {% if active == 'admin' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Admin</span>
+      </a>
+
+      <!-- OPERATIONS -->
+      <div class="nav-group-label" style="margin-top: 12px;">Operations</div>
+      <a href="/app" class="nav-item {% if active == 'dashboard' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/app/referrals" class="nav-item {% if active == 'referrals' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Referrals</span>
+      </a>
+      <a href="/app/patients" class="nav-item {% if active == 'patients' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        <span>Patients</span>
+      </a>
+      <a href="/app/alerts" class="nav-item {% if active == 'alerts' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span>Red flags</span>
+      </a>
+      <a href="/app/analytics" class="nav-item {% if active == 'analytics' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/app/roi" class="nav-item {% if active == 'roi' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg>
+        <span>ROI calculator</span>
+      </a>
+
+      <!-- DOCUMENTATION (collapsed) -->
+      <details class="nav-details" {% if active in ('model_card','datasheet','dpia','ndpa','threat_model','consent_versions','pilot_plan') %}open{% endif %}>
+        <summary class="nav-group-label" style="margin-top: 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+          <span>Documentation</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <a href="/model/card" class="nav-item {% if active == 'model_card' %}active{% endif %}"><span>Model card</span></a>
+        <a href="/model/datasheet" class="nav-item {% if active == 'datasheet' %}active{% endif %}"><span>Datasheet</span></a>
+        <a href="/model/dpia" class="nav-item {% if active == 'dpia' %}active{% endif %}"><span>DPIA</span></a>
+        <a href="/model/ndpa" class="nav-item {% if active == 'ndpa' %}active{% endif %}"><span>NDPA checklist</span></a>
+        <a href="/model/threat-model" class="nav-item {% if active == 'threat_model' %}active{% endif %}"><span>Threat model</span></a>
+        <a href="/model/consent-versions" class="nav-item {% if active == 'consent_versions' %}active{% endif %}"><span>Consent log</span></a>
+        <a href="/app/pilot-plan" class="nav-item {% if active == 'pilot_plan' %}active{% endif %}"><span>Pilot plan</span></a>
+        <a href="/verify" class="nav-item" target="_blank"><span>Public chain verify ↗</span></a>
+      </details>
+
+      <!-- ACCOUNT -->
+      <div class="nav-group-label" style="margin-top: 12px;">Account</div>
+      <a href="/app/settings" class="nav-item {% if active == 'settings' %}active{% endif %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-user" id="user-card">
+      <div class="avatar" id="user-avatar">—</div>
+      <div class="user-info">
+        <div class="user-name" id="user-name">Loading…</div>
+        <div class="user-role" id="user-role"></div>
+      </div>
+      <button class="icon-btn" id="user-menu-btn" title="Account menu">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      </button>
+      <div class="user-menu" id="user-menu">
+        <a href="/app/profile">Profile</a>
+        <a href="/app/settings">Settings</a>
+        <button id="logout-btn">Sign out</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="sidebar-toggle" title="Toggle sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+      <div class="topbar-right">
+        <div class="search-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="search-input" placeholder="Search patients, referrals…">
+          <span class="cmdk-hint">/</span>
+        </div>
+        <button class="icon-btn" title="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<style>
+  .nav-group-label {
+    padding: 8px 12px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-tertiary);
+  }
+  .nav-details summary { list-style: none; }
+  .nav-details summary::-webkit-details-marker { display: none; }
+  .nav-details[open] summary svg { transform: rotate(180deg); }
+  .nav-details summary svg { transition: transform 200ms; }
+</style>
+
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/app-shell.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,90 @@
+{% extends "app/base.html" %}
+{% block title %}Model card — OneCare Loop{% endblock %}
+{% block page_title %}Model card{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Model card</h2>
+    <p>Machine-learning components in OneCare Loop, their intended use, and their limits.</p>
+  </div>
+  <a href="/api/compliance/ndpa-checklist" class="btn btn-outline btn-sm" target="_blank">NDPA checklist (JSON) →</a>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">1. Components</h3>
+  <table class="data-table">
+    <thead><tr><th>Component</th><th>Type</th><th>Purpose</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Drop-off risk score</td><td>Logistic regression</td><td>Predicts the probability a referral will fail to close, at referral-creation time</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Reply classifier</td><td>LLM (Groq) + template fallback</td><td>Classifies patient SMS/WhatsApp replies into yes / no / reschedule / stop</td><td><span class="pill pill-amber">SIMULATE</span></td></tr>
+      <tr><td>Clinical content generator</td><td>—</td><td>Not used. All patient-facing clinical text is human-authored and frozen by version.</td><td><span class="pill pill-gray">EXCLUDED</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">2. Intended use</h3>
+  <p style="font-size:13.5px; line-height:1.7;">
+    These components are <strong>operational aids for a care-navigation team</strong>. They help a human prioritise which referrals to chase first, and which patient replies mean what. They do not make clinical decisions, they do not recommend treatment, and they do not diagnose.
+  </p>
+  <p style="font-size:13.5px; line-height:1.7; margin-top:8px;">
+    <strong>Not intended for:</strong> clinical decision support, triage, diagnosis, ambulance dispatch, or replacing the judgment of a licensed clinician. The product can be operated — and clinically closed — without either component running.
+  </p>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">3. Drop-off risk score</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:13px;line-height:1.7;">
+    <div>
+      <div style="font-weight:600;margin-bottom:6px;">Features</div>
+      <ul style="padding-left:16px;color:var(--text-secondary);">
+        <li>BP severity (systolic, diastolic)</li>
+        <li>Urgency tier</li>
+        <li>Insurance type (NHIA / self-pay)</li>
+        <li>Patient age band</li>
+        <li>Referring facility type (pharmacy / PMV)</li>
+        <li>Day of week of referral</li>
+      </ul>
+      <div style="font-weight:600;margin:14px 0 6px;">Deliberately excluded</div>
+      <ul style="padding-left:16px;color:var(--text-secondary);">
+        <li>Patient name, phone, address</li>
+        <li>Gender, ethnicity, religion</li>
+        <li>Any free-text field</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-weight:600;margin-bottom:6px;">Training data</div>
+      <p style="color:var(--text-secondary);margin:0 0 10px;">Trained on <strong>2,000 synthetically generated patient journeys</strong>. Not trained on real patient data. The generator is seeded and reproducible.</p>
+      <div style="font-weight:600;margin-bottom:6px;">Evaluation</div>
+      <p style="color:var(--text-secondary);margin:0 0 10px;">AUC 0.79 on held-out synthetic set. <strong>This number is not evidence of real-world performance.</strong> Field validation is scheduled for the pilot.</p>
+      <div style="font-weight:600;margin-bottom:6px;">Output</div>
+      <p style="color:var(--text-secondary);margin:0;">A single score between 0 and 1. Surfaced to the care navigator as <em>low / medium / high</em>. Never shown to the patient, never used to gate any state transition.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">4. Reply classifier</h3>
+  <p style="font-size:13.5px; line-height:1.7;">
+    Classifies patient replies into four buckets: <span class="mono-inline">yes</span>, <span class="mono-inline">no</span>, <span class="mono-inline">reschedule</span>, <span class="mono-inline">stop</span>. Two-path implementation:
+  </p>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);margin-top:8px;">
+    <li><strong>Primary:</strong> Groq API with a fixed prompt. The model only classifies; it does not compose replies.</li>
+    <li><strong>Fallback:</strong> deterministic keyword matching on the multilingual templates. Always available, even offline.</li>
+  </ul>
+  <p style="font-size:13.5px; line-height:1.7; margin-top:8px;">
+    If the two paths disagree, the human-readable reply is shown to the care navigator and no automated action is taken. Disagreements are logged for review.
+  </p>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:12px;">5. Ethical considerations</h3>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);">
+    <li>Neither model can move a patient along the state machine. Only human-authored transitions do.</li>
+    <li>Neither model is exposed to patients. The patient receipt shows only events and their hashes.</li>
+    <li>If the drop-off model is removed, the product still works — the navigator just loses a prioritisation hint.</li>
+    <li>If the reply classifier is removed, replies are surfaced to the navigator as free text.</li>
+    <li>No model output is used as the sole basis for any state transition, billing event, or clinical outcome.</li>
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "app/base.html" %}
+{% block title %}NDPA checklist — OneCare Loop{% endblock %}
+{% block page_title %}NDPA compliance checklist{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>NDPA 2023 compliance checklist</h2>
+    <p>Mapping to Nigeria Data Protection Act 2023 requirements. Honest status, not aspirational.</p>
+  </div>
+  <a href="/api/compliance/ndpa-checklist" class="btn btn-outline btn-sm" target="_blank">JSON version →</a>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">§24 — Lawful basis</h3>
+  <table class="data-table">
+    <thead><tr><th>Basis</th><th>Where used</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Consent (explicit, versioned, hashed)</td><td>All patient processing</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Legal obligation</td><td>Retention of care events (7 years)</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Vital interests</td><td>Emergency red-flag routing</td><td><span class="pill pill-amber">SIMULATE</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">§34–38 — Data subject rights</h3>
+  <table class="data-table">
+    <thead><tr><th>Right</th><th>Implementation</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Access</td><td>Patient receipt via OTP-authenticated view</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Rectification</td><td>Corrective event append (original preserved)</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Erasure</td><td>Crypto-shred PII; chain preserved as hashes only</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Portability</td><td>JSONL export per patient</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Objection</td><td>Recorded as PATIENT_DECLINED event</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Automated decision appeal</td><td>No decisions are automated; every state transition requires human actor</td><td><span class="pill pill-green">BUILD</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">§39 — Security measures</h3>
+  <table class="data-table">
+    <thead><tr><th>Requirement</th><th>Implementation</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Encryption in transit</td><td>TLS via Render / production reverse proxy</td><td><span class="pill pill-amber">DEPLOY-CONFIG</span></td></tr>
+      <tr><td>Encryption at rest — PII</td><td>Phone encrypted before storage; key in env, not in DB</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Encryption at rest — care events</td><td>SQLite file; Neon encryption-at-rest when hosted</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Tamper-evidence</td><td>SHA-256 hash chain per patient</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Access control</td><td>Session auth + role gates + per-read access log</td><td><span class="pill pill-green">BUILD</span></td></tr>
+      <tr><td>Pseudonymisation</td><td>Patient_id is a UUID; no names stored</td><td><span class="pill pill-green">BUILD</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">§40 — Breach notification</h3>
+  <table class="data-table">
+    <thead><tr><th>Requirement</th><th>Implementation</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>72-hour notification to NDPC</td><td>Documented runbook; not automated</td><td><span class="pill pill-amber">DOCUMENTED</span></td></tr>
+      <tr><td>Data subject notification</td><td>Template SMS drafted; not wired to automation</td><td><span class="pill pill-amber">DOCUMENTED</span></td></tr>
+      <tr><td>Breach detection</td><td>Chain verification endpoint polls continuously in prod</td><td><span class="pill pill-green">BUILD</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">§41–43 — Cross-border transfer</h3>
+  <p style="font-size:13.5px;line-height:1.7;">
+    Compute runs on Render (US/EU) during the build phase. Before pilot, all patient data will migrate to a Lagos-region or in-country host. This is <span class="pill pill-amber">PHASED</span> — flagged as a pre-pilot blocker in the pilot plan, not shipped silently.
+  </p>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:12px;">§44 — Records of processing</h3>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);">
+    <li>Consent versions logged in <span class="mono-inline">consents</span> table with hashes</li>
+    <li>Access logs in <span class="mono-inline">access_logs</span> table — every read of a patient record</li>
+    <li>Erasure events tombstoned in the chain, not deleted</li>
+    <li>Full processing register maintained in <span class="mono-inline">docs/ROPA.md</span> (to be shipped)</li>
+  </ul>
+</div>
+{% endblock %}

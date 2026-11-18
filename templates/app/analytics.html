@@ -1,0 +1,171 @@
+{% extends "app/base.html" %}
+{% block title %}Analytics — OneCare Loop{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Population analytics</h2><p>Closure, timing, drop-off risk, chain integrity, patient outreach.</p></div>
+</div>
+
+<div class="stats-grid" id="stats"></div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);">
+      <h3 style="font-size:14px;margin:0;">Chain integrity</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-danger btn-sm" id="tamper-btn">Tamper chain</button>
+        <button class="btn btn-sm" id="restore-btn">Restore</button>
+      </div>
+    </div>
+    <div id="chain-status" class="muted" style="font-size:13px;margin-bottom:12px;">Loading…</div>
+    <div id="chain-blocks"></div>
+  </div>
+  <div class="card">
+    <h3 style="font-size:14px;margin:0 0 var(--sp-4);">Failure breakdown</h3>
+    <div id="failures"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-4);" id="dropoff-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);flex-wrap:wrap;gap:8px;">
+    <div>
+      <h3 style="font-size:14px;margin:0;">Drop-off risk model</h3>
+      <div class="muted" style="font-size:12px;margin-top:2px;" id="dropoff-meta">Loading…</div>
+    </div>
+    <span class="pill pill-teal" id="dropoff-label">P(drop-off)</span>
+  </div>
+  <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.6;" id="dropoff-honest"></div>
+  <div id="dropoff-table" style="margin-top:12px;"></div>
+</div>
+
+<div class="card">
+  <h3 style="font-size:14px;margin:0 0 var(--sp-4);">Recent patient outreach</h3>
+  <div id="notifications-feed"></div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+(async function(){
+  // -------- stats --------
+  const m = await (await fetch('/api/metrics')).json();
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Patients</div><div class="stat-value">${m.total_patients}</div></div>
+    <div class="stat-card"><div class="stat-label">Closed loops</div><div class="stat-value">${m.closed_loops}</div></div>
+    <div class="stat-card"><div class="stat-label">Closure rate</div><div class="stat-value">${(m.closure_rate*100).toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="stat-label">Time-to-care</div><div class="stat-value">${m.time_to_care_median_hours != null ? m.time_to_care_median_hours.toFixed(1)+'h' : '—'}</div></div>
+    <div class="stat-card"><div class="stat-label">Value recovered</div><div class="stat-value">₦${(m.money_recovered_naira||0).toLocaleString()}</div></div>
+  `;
+  const f = document.getElementById('failures');
+  const fkeys = Object.keys(m.failure_breakdown||{});
+  f.innerHTML = !fkeys.length
+    ? '<p class="muted" style="font-size:13px;">No failures logged.</p>'
+    : fkeys.map(k => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border-subtle);"><span class="muted">${k}</span><span class="pill pill-red">${m.failure_breakdown[k]}</span></div>`).join('');
+
+  // -------- chain --------
+  async function loadChain() {
+    const exp = await (await fetch('/api/audit/export')).text();
+    const events = exp.split('\n').filter(Boolean).map(l => JSON.parse(l));
+    if (!events.length) { document.getElementById('chain-blocks').innerHTML = '<p class="muted">No events yet.</p>'; return; }
+    const byPatient = {};
+    events.forEach(e => { (byPatient[e.patient_id] ||= []).push(e); });
+    const pid = Object.keys(byPatient).sort((a,b) => byPatient[b].length - byPatient[a].length)[0];
+    const chain = byPatient[pid].sort((a,b) => a.seq - b.seq);
+    const v = await (await fetch('/api/audit/verify/' + pid)).json();
+    document.getElementById('chain-status').innerHTML = v.ok
+      ? `<span style="color:var(--success);font-weight:600;">✓ Chain verified</span> · ${v.events} events · ${v.signed}/${v.events} signed · head <span class="mono-inline">${v.head_hash.slice(0,12)}…</span>`
+      : `<span style="color:var(--danger);font-weight:600;">✗ Chain broken</span> at seq ${v.broken_at?.seq} (${v.broken_at?.reason})`;
+    document.getElementById('chain-blocks').innerHTML = chain.map(e =>
+      `<div class="chain-block" data-id="${e.id}" data-seq="${e.seq}"><span class="mono" style="opacity:.6;">#${e.seq}</span><span>${e.event_type}</span><span class="mono" style="opacity:.5;">${e.hash.slice(0,12)}…</span></div>`
+    ).join('');
+    window._chain = chain; window._pid = pid;
+  }
+  loadChain();
+
+  document.getElementById('tamper-btn').onclick = async () => {
+    if (!window._chain) return;
+    const mid = window._chain[Math.floor(window._chain.length/2)];
+    const r = await fetch('/api/audit/tamper', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event_id:mid.id})});
+    const j = await r.json();
+    if (!j.ok) { toast(j.error || 'tamper failed', 'error'); return; }
+    const blocks = document.querySelectorAll('.chain-block');
+    blocks.forEach((b,i) => {
+      if (i === Math.floor(blocks.length/2)) {
+        setTimeout(() => {
+          b.classList.add('tampering');
+          for (let k=i+1; k<blocks.length; k++) setTimeout(() => blocks[k].classList.add('cascaded'), (k-i)*60);
+        }, 0);
+      }
+    });
+    setTimeout(loadChain, 400 + blocks.length*60);
+    toast('Chain broken — verify to confirm', 'error');
+  };
+  document.getElementById('restore-btn').onclick = async () => {
+    if (!window._chain) return;
+    const mid = window._chain[Math.floor(window._chain.length/2)];
+    const r = await fetch('/api/audit/restore', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event_id:mid.id})});
+    const j = await r.json();
+    if (j.ok) { toast('Chain restored', 'success'); loadChain(); }
+  };
+
+  // -------- drop-off model --------
+  try {
+    const dm = await (await fetch('/api/dropoff/model')).json();
+    document.getElementById('dropoff-meta').textContent =
+      `${dm.model_type} v${dm.version} · trained on ${dm.trained_on} synthetic journeys · seed ${dm.seed}`;
+    document.getElementById('dropoff-honest').textContent = dm.honest_note;
+    const weights = Object.entries(dm.weights || {}).sort((a,b) => Math.abs(b[1]) - Math.abs(a[1]));
+    const maxAbs = Math.max(...weights.map(w => Math.abs(w[1])), 0.001);
+    document.getElementById('dropoff-table').innerHTML = weights.map(([k, v]) => {
+      const pct = Math.abs(v) / maxAbs * 100;
+      const color = v >= 0 ? 'var(--danger)' : 'var(--success)';
+      return `<div style="display:grid;grid-template-columns:180px 1fr 60px;gap:8px;align-items:center;font-size:12px;margin-bottom:6px;">
+        <span class="mono" style="color:var(--text-secondary);">${k}</span>
+        <div style="height:6px;background:rgba(255,255,255,0.04);border-radius:999px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${color};opacity:0.7;border-radius:999px;"></div>
+        </div>
+        <span class="mono" style="text-align:right;color:${color};">${v.toFixed(2)}</span>
+      </div>`;
+    }).join('') + `<div class="muted" style="font-size:11px;margin-top:8px;">Positive weight → higher drop-off risk. Negative weight → lower risk.</div>`;
+  } catch (e) {
+    document.getElementById('dropoff-meta').textContent = 'Model unavailable: ' + e.message;
+  }
+
+  // -------- notifications feed --------
+  try {
+    const exp = await (await fetch('/api/audit/export')).text();
+    const events = exp.split('\n').filter(Boolean).map(l => JSON.parse(l));
+    const patientIds = [...new Set(events.map(e => e.patient_id))];
+    if (!patientIds.length) {
+      document.getElementById('notifications-feed').innerHTML = '<p class="muted" style="font-size:13px;">No patients yet.</p>';
+    } else {
+      const all = [];
+      for (const pid of patientIds.slice(0, 5)) {
+        const j = await (await fetch('/api/notifications/patient/' + pid)).json();
+        (j.notifications || []).forEach(n => all.push(n));
+      }
+      all.sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      if (!all.length) {
+        document.getElementById('notifications-feed').innerHTML = '<p class="muted" style="font-size:13px;">No notifications sent yet. Refer a patient to trigger one.</p>';
+      } else {
+        document.getElementById('notifications-feed').innerHTML = `<table class="data-table">
+          <thead><tr><th>Sent</th><th>Patient</th><th>Channel</th><th>Template</th><th>Lang</th><th>Reply</th><th>Class</th></tr></thead>
+          <tbody>${all.slice(0, 20).map(n => `
+            <tr>
+              <td class="mono" style="font-size:11px;">${new Date(n.sent_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+              <td class="mono" style="font-size:11px;">${n.patient_id.slice(0,8)}…</td>
+              <td><span class="pill ${n.channel === 'whatsapp' ? 'pill-teal' : 'pill-gray'}">${n.channel.toUpperCase()}</span></td>
+              <td class="mono" style="font-size:11px;">${n.template_id}</td>
+              <td class="mono" style="font-size:11px;">${(n.language||'en').toUpperCase()}</td>
+              <td style="font-size:12px;color:var(--text-secondary);">${n.reply_text || '—'}</td>
+              <td>${n.reply_class ? `<span class="pill pill-amber">${n.reply_class}</span>` : '<span class="muted" style="font-size:11px;">pending</span>'}</td>
+            </tr>
+          `).join('')}</tbody></table>`;
+      }
+    }
+  } catch (e) {
+    document.getElementById('notifications-feed').innerHTML = '<p class="muted">Outreach feed unavailable.</p>';
+  }
+})();
+</script>
+{% endblock %}

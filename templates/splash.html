@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneCare Loop — proof that care happened</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+<link rel="stylesheet" href="/static/css/motion.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.42/bundled/lenis.min.js"></script>
+<style>
+  .s-primary-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 32px;
+    background: var(--teal);
+    color: var(--bg-base);
+    border: none;
+    border-radius: var(--r-md);
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+    margin-top: 8px;
+    will-change: transform;
+    transition: box-shadow 300ms ease;
+    z-index: 2;
+    position: relative;
+    opacity: 0;
+  }
+  .s-primary-cta:hover {
+    box-shadow: 0 0 32px rgba(45,212,168,0.4), 0 0 80px rgba(45,212,168,0.2);
+  }
+  .s-primary-cta .arrow {
+    display: inline-block;
+    transition: transform 300ms var(--ease-out);
+  }
+  .s-primary-cta:hover .arrow { transform: translateX(4px); }
+
+  .s-role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    max-width: 720px;
+    margin-top: 40px;
+    opacity: 0;
+    z-index: 2;
+    position: relative;
+  }
+  .s-role {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    padding: 18px;
+    text-decoration: none;
+    color: var(--text-primary);
+    text-align: left;
+    transition: transform 300ms var(--ease-out), border-color 300ms ease, box-shadow 300ms ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    will-change: transform;
+  }
+  .s-role:hover {
+    transform: translateY(-3px);
+    border-color: var(--teal);
+    box-shadow: 0 12px 32px rgba(45,212,168,0.1);
+  }
+  .s-role .role-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+  .s-role .role-title { font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
+  .s-role .role-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-top: 2px; }
+  .s-role .role-cta { font-size: 10.5px; color: var(--teal); font-weight: 600; margin-top: 8px; font-family: var(--font-mono); letter-spacing: 0.02em; }
+
+  /* Hide GSAP-animated elements until JS takes over */
+  .pre-gsap .s-headline .w,
+  .pre-gsap .s-sub,
+  .pre-gsap .s-hero-pill,
+  .pre-gsap .s-illustration,
+  .pre-gsap .s-role-grid,
+  .pre-gsap .s-primary-cta,
+  .pre-gsap .s-hash-ticker,
+  .pre-gsap .s-stats,
+  .pre-gsap .s-footer-trust { opacity: 0; }
+</style>
+</head>
+<body class="pre-gsap">
+<!-- ONECARE_NAV -->
+<div id="onecare-nav" style="position: fixed; top: 16px; left: 16px; right: 16px; z-index: 9999; pointer-events: none; isolation: isolate;">
+  <nav style="pointer-events: auto; max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: rgba(10, 16, 26, 0.68); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.32); font-family: 'Public Sans', system-ui, sans-serif;">
+    <a href="/" style="color: #E8EEF4; text-decoration: none; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; cursor: pointer;">onecare<span style="color: #2DD4A8;">.</span>loop</a>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <a href="/proof" style="color: #2DD4A8; text-decoration: none; font-size: 13px; padding: 7px 14px; border: 1px solid rgba(45, 212, 168, 0.4); border-radius: 8px; font-weight: 500; cursor: pointer; transition: background 150ms;">See a closed loop</a>
+      <a href="/patient/demo-login" style="color: #E8EEF4; text-decoration: none; font-size: 13px; padding: 7px 14px; background: rgba(45, 212, 168, 0.12); border: 1px solid rgba(45, 212, 168, 0.3); border-radius: 8px; font-weight: 500; cursor: pointer; transition: background 150ms;">Patient demo</a>
+      <a href="/auth/login" style="color: #0A101A; text-decoration: none; font-size: 13px; padding: 7px 16px; background: #2DD4A8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: opacity 150ms;">Staff sign in</a>
+    </div>
+  </nav>
+</div>
+<script>
+(function(){
+  function verify(){
+    var nav = document.querySelector('#onecare-nav nav');
+    if (!nav) return;
+    var r = nav.getBoundingClientRect();
+    var el = document.elementFromPoint(r.left + 20, r.top + r.height / 2);
+    if (el && !nav.contains(el)) {
+      console.warn('[OneCare] nav is behind:', el);
+      nav.parentElement.style.zIndex = '2147483647';
+    }
+  }
+  if (document.readyState === 'complete') setTimeout(verify, 600);
+  else window.addEventListener('load', function(){ setTimeout(verify, 600); });
+})();
+</script>
+
+
+<canvas id="particles-canvas"></canvas>
+
+<a href="/" class="s-brand-mark">
+  <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+    <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+    <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+    <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+  </svg>
+  <span class="s-brand-word">onecare<span class="dot">.</span>loop</span>
+</a>
+
+<main class="s-hero">
+
+  <div class="s-illustration" id="s-ring" aria-hidden="true">
+    <svg viewBox="0 0 400 400">
+      <defs>
+        <radialGradient id="cg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#2DD4A8" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#2DD4A8" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <path class="arc a1" d="M 200 100 A 100 100 0 0 1 286.6 150"/>
+      <path class="arc a2" d="M 286.6 150 A 100 100 0 0 1 286.6 250"/>
+      <path class="arc a3" d="M 286.6 250 A 100 100 0 0 1 200 300"/>
+      <path class="arc a4" d="M 200 300 A 100 100 0 0 1 113.4 250"/>
+      <path class="arc a5" d="M 113.4 250 A 100 100 0 0 1 113.4 150"/>
+      <path class="arc a6" d="M 113.4 150 A 100 100 0 0 1 200 100"/>
+      <circle class="node n1" cx="200" cy="100" r="9"/>
+      <circle class="node n2" cx="286.6" cy="150" r="9"/>
+      <circle class="node n3" cx="286.6" cy="250" r="9"/>
+      <circle class="node n4" cx="200" cy="300" r="9"/>
+      <circle class="node n5" cx="113.4" cy="250" r="9"/>
+      <circle class="node n6" cx="113.4" cy="150" r="9"/>
+      <circle class="center-glow" cx="200" cy="200" r="24" fill="url(#cg)"/>
+      <g class="center-mark">
+        <rect x="196" y="184" width="8" height="32" rx="2" fill="#E8EEF4"/>
+        <rect x="184" y="196" width="32" height="8" rx="2" fill="#E8EEF4"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="s-hero-pill">Population Health · Nigeria · 2025</div>
+
+  <h1 class="s-headline" id="s-headline">Every patient deserves a closed loop.</h1>
+
+  <p class="s-sub" id="s-sub">
+    From screening at the pharmacy to treatment at the hospital — every step recorded, every claim verifiable, every patient accounted for.
+  </p>
+
+  <div class="s-hash-ticker" id="s-hash-ticker">
+    <span class="tick-dot"></span>
+    <span class="tick-label">Chain live</span>
+    <span class="tick-hash" id="tick-hash">0x0000000000000000</span>
+  </div>
+
+  <a href="/proof" class="s-primary-cta" id="s-cta">
+    See a live care loop <span class="arrow">→</span>
+  </a>
+
+  <div class="s-role-grid" id="s-role-grid">
+    <a href="/patient/login" class="s-role">
+      <span class="role-icon">🧑</span>
+      <span class="role-title">I'm a patient</span>
+      <span class="role-desc">See your care journey. Sign in with your phone number.</span>
+      <span class="role-cta">Patient portal →</span>
+    </a>
+    <a href="/login" class="s-role">
+      <span class="role-icon">🩺</span>
+      <span class="role-title">I'm care team</span>
+      <span class="role-desc">Pharmacists, hospitals, clinicians. Screen, refer, close loops.</span>
+      <span class="role-cta">Staff sign-in →</span>
+    </a>
+    <a href="/signup" class="s-role">
+      <span class="role-icon">⊕</span>
+      <span class="role-title">I'm new here</span>
+      <span class="role-desc">Create a staff account for your pharmacy, hospital, or payer workspace.</span>
+      <span class="role-cta">Create account →</span>
+    </a>
+  </div>
+
+  <div class="s-stats" id="s-stats" style="opacity:0;">
+    <div class="s-stat">
+      <div class="s-stat-value" data-ticker="22" data-suffix="M">0</div>
+      <div class="s-stat-label">Living with HTN</div>
+    </div>
+    <div class="s-stat">
+      <div class="s-stat-value danger" data-ticker="2.9" data-decimals="1" data-suffix="M">0</div>
+      <div class="s-stat-label">BP controlled</div>
+    </div>
+    <div class="s-stat">
+      <div class="s-stat-value" data-ticker="13" data-suffix="%">0</div>
+      <div class="s-stat-label">Completion</div>
+    </div>
+  </div>
+
+  <div class="s-footer-trust" id="s-footer" style="opacity:0;">
+    <span class="pill-mini">NDPA 2023</span>
+    <span class="pill-mini">FHIR R4</span>
+    <span class="pill-mini">Ed25519 signed</span>
+  </div>
+
+</main>
+
+<script src="/static/js/motion.js"></script>
+<script>
+(function () {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Particle canvas — subtle amber/teal dots drifting
+  function initParticles() {
+    if (reduced) return;
+    const canvas = document.getElementById('particles-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w, h, dots = [];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const N = Math.min(70, Math.floor((w * h) / 22000));
+    for (let i = 0; i < N; i++) {
+      dots.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        r: Math.random() * 1.5 + 0.5,
+        color: Math.random() > 0.5 ? 'rgba(45,212,168,0.5)' : 'rgba(255,176,136,0.4)',
+      });
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, w, h);
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 0) d.x = w; if (d.x > w) d.x = 0;
+        if (d.y < 0) d.y = h; if (d.y > h) d.y = 0;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = d.color;
+        ctx.fill();
+      }
+      // Connect nearby dots
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x;
+          const dy = dots[i].y - dots[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 140) {
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.strokeStyle = `rgba(45,212,168,${0.08 * (1 - dist / 140)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }
+  initParticles();
+
+  if (reduced || typeof window.gsap === 'undefined') {
+    // Fallback: show everything immediately
+    document.body.classList.remove('pre-gsap');
+    document.querySelectorAll('.s-hero-pill, .s-sub, .s-role-grid, .s-primary-cta, .s-hash-ticker, .s-stats, .s-footer-trust').forEach(el => {
+      el.style.opacity = 1;
+    });
+    const headline = document.getElementById('s-headline');
+    if (headline) headline.style.opacity = 1;
+    return;
+  }
+
+  // ---------- Cinematic entrance timeline ----------
+  const h = document.getElementById('s-headline');
+  const words = h.textContent.trim().split(/\s+/);
+  h.innerHTML = words.map(w => `<span class="w" style="display:inline-block;opacity:0;transform:translateY(80px) rotateX(-40deg);">${w}</span>`).join(' ');
+
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+  // 1. Ring draws itself
+  tl.fromTo('.s-illustration', { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'expo.out' }, 0);
+  tl.fromTo('.s-illustration svg', { rotateZ: -15 }, { rotateZ: 0, duration: 1.6, ease: 'expo.out' }, 0);
+
+  // Redraw arcs with stroke-dashoffset
+  document.querySelectorAll('.s-illustration .arc').forEach((arc, i) => {
+    const len = arc.getTotalLength();
+    gsap.set(arc, { strokeDasharray: len, strokeDashoffset: len });
+    tl.to(arc, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.inOut' }, 0.2 + i * 0.08);
+  });
+  document.querySelectorAll('.s-illustration .node').forEach((node, i) => {
+    gsap.set(node, { scale: 0, transformOrigin: 'center' });
+    tl.to(node, { scale: 1, duration: 0.5, ease: 'back.out(2)' }, 0.6 + i * 0.08);
+  });
+  tl.fromTo('.s-illustration .center-mark', { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(2)' }, 1.2);
+
+  // 2. Pill
+  tl.fromTo('.s-hero-pill', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7 }, 0.4);
+
+  // 3. Headline words converge with 3D rotation
+  tl.to(h.querySelectorAll('.w'), {
+    opacity: 1, y: 0, rotateX: 0,
+    duration: 1, stagger: 0.08, ease: 'power4.out',
+  }, 0.6);
+
+  // 4. Sub
+  tl.fromTo('.s-sub', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8 }, 1.5);
+
+  // 5. Hash ticker
+  tl.fromTo('.s-hash-ticker', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6 }, 1.7);
+
+  // 6. CTA
+  tl.fromTo('.s-primary-cta', { opacity: 0, y: 24, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'back.out(1.7)' }, 1.9);
+
+  // 7. Role grid stagger
+  tl.fromTo('.s-role', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.1 }, 2.1);
+
+  // 8. Stats
+  tl.fromTo('.s-stats', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7 }, 2.4);
+  tl.fromTo('.s-footer-trust', { opacity: 0 }, { opacity: 1, duration: 0.6 }, 2.6);
+
+  // 9. Live hash ticker — mutate the hex every 120ms
+  const tickHash = document.getElementById('tick-hash');
+  const hexChars = '0123456789abcdef';
+  function randomHex(len) {
+    let s = '0x';
+    for (let i = 0; i < len; i++) s += hexChars[Math.floor(Math.random() * hexChars.length)];
+    return s;
+  }
+  setInterval(() => {
+    if (tickHash && tickHash.offsetParent !== null) {
+      tickHash.textContent = randomHex(16);
+    }
+  }, 120);
+
+  // 10. Float the ring continuously
+  gsap.to('.s-illustration', {
+    y: -12,
+    duration: 3,
+    ease: 'sine.inOut',
+    yoyo: true,
+    repeat: -1,
+    delay: 2,
+  });
+  gsap.to('.s-illustration .center-glow', {
+    attr: { r: 30 },
+    duration: 2,
+    ease: 'sine.inOut',
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // 11. Stats counters
+  const counters = document.querySelectorAll('[data-ticker]');
+  counters.forEach((el, i) => {
+    const target = parseFloat(el.dataset.ticker);
+    const suffix = el.dataset.suffix || '';
+    const decimals = parseInt(el.dataset.decimals || '0');
+    const obj = { val: 0 };
+    tl.to(obj, {
+      val: target,
+      duration: 1.6,
+      ease: 'power2.out',
+      onUpdate: () => {
+        const n = decimals > 0 ? obj.val.toFixed(decimals) : Math.round(obj.val);
+        el.textContent = n + suffix;
+      },
+    }, 2.5 + i * 0.1);
+  });
+
+  // 12. Cursor-follow parallax on illustration
+  const hero = document.querySelector('.s-hero');
+  const ill = document.getElementById('s-ring');
+  if (ill && hero) {
+    hero.addEventListener('mousemove', (e) => {
+      const rect = hero.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      gsap.to(ill, {
+        rotateY: x * 15,
+        rotateX: -y * 15,
+        transformPerspective: 900,
+        duration: 1,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      });
+    });
+  }
+
+  // 13. Remove pre-gsap once timeline starts
+  tl.call(() => document.body.classList.remove('pre-gsap'), [], 0.1);
+})();
+</script>
+</body>
+</html>

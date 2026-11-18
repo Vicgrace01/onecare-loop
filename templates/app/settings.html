@@ -1,0 +1,27 @@
+{% extends "app/base.html" %}
+{% block title %}Settings — OneCare Loop{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Settings</h2><p>Configuration surfaces for the pilot.</p></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+  <div class="card">
+    <h3 style="font-size:14px;margin-bottom:var(--sp-3);">Active protocol</h3>
+    <div style="display:grid;gap:10px;font-size:13.5px;">
+      <div style="display:flex;justify-content:space-between;"><span class="muted">Hypertension</span><span class="pill pill-teal">HTN-PROTOCOL-v1</span></div>
+      <div style="display:flex;justify-content:space-between;"><span class="muted">Consent version</span><span class="mono">1.0</span></div>
+      <div style="display:flex;justify-content:space-between;"><span class="muted">DHIN eligibility</span><span class="pill pill-amber">SIMULATED</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="font-size:14px;margin-bottom:var(--sp-3);">Coming soon</h3>
+    <ul class="muted" style="font-size:13px;padding-left:16px;line-height:1.9;">
+      <li>Multi-disease configuration</li>
+      <li>Live DHIN API</li>
+      <li>SMS / WhatsApp delivery (Twilio)</li>
+      <li>Claims submission to HMO</li>
+      <li>Care navigator assignment</li>
+      <li>Provider reputation visibility</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

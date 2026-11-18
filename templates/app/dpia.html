@@ -1,0 +1,75 @@
+{% extends "app/base.html" %}
+{% block title %}DPIA — OneCare Loop{% endblock %}
+{% block page_title %}Data Protection Impact Assessment{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>DPIA summary</h2>
+    <p>Article 35-style assessment under Nigeria's Data Protection Act 2023.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">1. Processing description</h3>
+  <table class="data-table">
+    <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+    <tbody>
+      <tr><td>Nature of processing</td><td>Recording patient screening, referral, appointment, encounter and disposition events in a hash-chained append-only log</td></tr>
+      <tr><td>Scope</td><td>Adults 30–79 with a hypertension-positive screening in Nigeria</td></tr>
+      <tr><td>Context</td><td>Licensed community pharmacies (primary channel), PMVs under approved protocol (secondary), HMO or hospital as payer</td></tr>
+      <tr><td>Purposes</td><td>Care completion, referral tracking, payer audit, program reporting</td></tr>
+      <tr><td>Data subjects</td><td>Patients screened for hypertension</td></tr>
+      <tr><td>Categories of data</td><td>BP reading, symptoms, age band, insurance type, NHIA number (if applicable), phone number, care events</td></tr>
+      <tr><td>Special category data</td><td>None. BP is health data but not one of the Article 9 special categories under NDPA §30.</td></tr>
+      <tr><td>Recipients</td><td>Referring pharmacy, receiving hospital, payer (HMO / NHIA / donor) — never sold, never shared with third parties</td></tr>
+      <tr><td>Retention</td><td>Care events: 7 years (regulatory). Contact details: crypto-shredded on consent withdrawal, with chain preserved via tombstoned hash.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">2. Necessity and proportionality</h3>
+  <p style="font-size:13.5px;line-height:1.7;">
+    The minimum data needed to close a care loop is: a BP reading, an outcome, a way to reach the patient, and proof the sequence was not altered. We store all four. We deliberately do <strong>not</strong> store: full name (only derived initials in receipts), home address, gender, ethnicity, free-text notes, or any clinical narrative. Contact details are hashed for lookup and encrypted for outreach, with separate keys.
+  </p>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">3. Risks to data subjects</h3>
+  <table class="data-table">
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Severity</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Unauthorised access to a patient's care history</td><td>Medium</td><td>High</td><td>Session auth, role gates, per-read access log</td></tr>
+      <tr><td>Linkage across payers via NHIA number</td><td>Low</td><td>Medium</td><td>NHIA number stored hashed, used only within the eligibility-check call</td></tr>
+      <tr><td>Silent modification of care events</td><td>Low</td><td>High</td><td>Hash chain + per-patient ledger head + tamper endpoint</td></tr>
+      <tr><td>Insider retroactive erasure of an event</td><td>Low</td><td>High</td><td>Append-only; erasure requires crypto-shredding of payload + tombstone event</td></tr>
+      <tr><td>Phone number exposure in logs</td><td>Medium</td><td>Medium</td><td>Logs capture patient_id only, never phone</td></tr>
+      <tr><td>Model output used as a clinical decision</td><td>Very low</td><td>High</td><td>Model card §5: no model output can move state</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="margin-bottom:12px;">4. Data subject rights</h3>
+  <ul style="font-size:13.5px;line-height:1.8;padding-left:20px;color:var(--text-secondary);">
+    <li><strong>Access:</strong> patient sees own receipt at <span class="mono-inline">/api/patient/&lt;id&gt;/receipt</span> with phone OTP (BUILD)</li>
+    <li><strong>Rectification:</strong> new corrective event appended; original event preserved (BUILD)</li>
+    <li><strong>Erasure:</strong> consent revocation triggers crypto-shredding of PII, chain preserved as hashes-only (BUILD)</li>
+    <li><strong>Portability:</strong> JSONL export at <span class="mono-inline">/api/audit/export</span> (BUILD)</li>
+    <li><strong>Objection:</strong> opt-out recorded as <span class="mono-inline">PATIENT_DECLINED</span> event (BUILD)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:12px;">5. Approval and review</h3>
+  <table class="data-table">
+    <thead><tr><th>Item</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Prepared by</td><td>OneCare Loop team</td></tr>
+      <tr><td>Reviewed by</td><td><span class="pill pill-amber">PENDING</span> — external DPO review scheduled before pilot</td></tr>
+      <tr><td>Review cadence</td><td>Quarterly, or on any change to data categories</td></tr>
+      <tr><td>This document's version</td><td>v1.0 · 2026-11-15</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

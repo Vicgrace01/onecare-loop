@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — OneCare Loop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+</head>
+<body>
+<div class="auth-split">
+
+  <aside class="auth-illustration-side">
+    <a href="/" class="auth-ilust-brand logo-mark">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+        <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+        <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+      </svg>
+      <span class="logo-word">onecare<span class="dot">.</span>loop</span>
+    </a>
+
+    <svg class="auth-ilust-ring" viewBox="0 0 400 400" aria-hidden="true">
+      <circle cx="200" cy="200" r="140" fill="none" stroke="#2DD4A8" stroke-width="1" stroke-dasharray="4 8" opacity="0.3"/>
+      <circle cx="200" cy="200" r="100" fill="none" stroke="#FFB088" stroke-width="1" stroke-dasharray="3 6" opacity="0.3"/>
+      <circle cx="200" cy="200" r="60" fill="none" stroke="#2DD4A8" stroke-width="1.5" opacity="0.4"/>
+      <circle cx="200" cy="200" r="10" fill="#2DD4A8" opacity="0.6"/>
+      <circle cx="200" cy="60" r="5" fill="#2DD4A8"/>
+      <circle cx="340" cy="200" r="5" fill="#FFB088"/>
+      <circle cx="200" cy="340" r="5" fill="#2DD4A8"/>
+      <circle cx="60" cy="200" r="5" fill="#FFB088"/>
+    </svg>
+
+    <div>
+      <p class="auth-ilust-quote">A referral cannot <em>quietly disappear</em> between the pharmacy, hospital, clinician, patient and payer.</p>
+      <p class="auth-ilust-author">— The OneCare Loop team, Lagos</p>
+
+      <div class="auth-ilust-stats">
+        <div class="auth-ilust-stat">
+          <div class="v">22M</div>
+          <div class="l">Living with HTN</div>
+        </div>
+        <div class="auth-ilust-stat">
+          <div class="v">2.9M</div>
+          <div class="l">BP controlled</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="auth-form-side">
+    <div class="auth-form-wrap">
+      <div class="auth-form-head">
+        <h1>Welcome back</h1>
+        <p>Sign in to your care operations dashboard.</p>
+      </div>
+
+      <form id="login-form">
+        <label class="field">
+          <span class="field-label">Email</span>
+          <input class="input" type="email" name="email" placeholder="you@hospital.ng" required autofocus>
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" name="password" placeholder="••••••••" required>
+        </label>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">Sign in</button>
+        <div id="login-error" style="display:none; margin-top:12px; padding:10px 14px; background:rgba(248,113,113,0.1); border:1px solid var(--danger); border-radius:var(--r-md); color:var(--danger); font-size:13px;"></div>
+      </form>
+
+      <div class="auth-divider">or use a demo account</div>
+
+      <div class="demo-accounts">
+        <div class="demo-accounts-title">Demo accounts · password: demo1234</div>
+        <div class="demo-account" data-email="admin@onecare.demo">
+          <span>Admin · System</span><span class="mono">admin@onecare.demo</span>
+        </div>
+        <div class="demo-account" data-email="hospital@onecare.demo">
+          <span>Hospital · Dr. Adewale</span><span class="mono">hospital@onecare.demo</span>
+        </div>
+        <div class="demo-account" data-email="pharmacy@onecare.demo">
+          <span>Pharmacy · Pharm. Chioma</span><span class="mono">pharmacy@onecare.demo</span>
+        </div>
+      </div>
+
+      <div class="auth-foot">
+        No account? <a href="/signup">Create one →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/ui.js"></script>
+<script>
+const form = document.getElementById('login-form');
+const btn = document.getElementById('login-btn');
+const err = document.getElementById('login-error');
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  err.style.display = 'none';
+  const fd = new FormData(form);
+  const body = Object.fromEntries(fd.entries());
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.textContent = 'Signing in…';
+  try {
+    const r = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Login failed');
+    window.location.href = j.redirect;
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.classList.remove('btn-loading');
+    btn.textContent = 'Sign in';
+  }
+};
+
+document.querySelectorAll('.demo-account').forEach(el => {
+  el.onclick = () => {
+    form.email.value = el.dataset.email;
+    form.password.value = 'demo1234';
+    form.email.focus();
+  };
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+{% extends "app/base.html" %}
+{% block title %}Hospital — OneCare Loop{% endblock %}
+{% block page_title %}Hospital queue{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Referral queue</h2><p>Sorted by urgency and SLA.</p></div>
+  <button class="btn btn-sm btn-outline" onclick="loadQ()">Refresh</button>
+</div>
+<div class="table-wrap" id="tbl"><div class="empty"><h3>Loading…</h3></div></div>
+<div id="panel" style="display:none;margin-top:16px;"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+let sel = {};
+async function loadQ() {
+  const j = await (await fetch('/api/hospital/queue')).json();
+  const el = document.getElementById('tbl');
+  if (!j.queue.length) { el.innerHTML = '<div class="empty"><h3>No open referrals</h3><p>Screen a patient from <a href="/demo/pharmacy">the pharmacy</a>.</p></div>'; return; }
+  el.innerHTML = `<table class="data-table"><thead><tr><th>Urgency</th><th>BP</th><th>SLA</th><th>Patient</th><th>State</th><th></th></tr></thead><tbody>${
+    j.queue.map(r => {
+      const cls = r.urgency==='emergency'?'pill-red':r.urgency==='urgent'?'pill-amber':'pill-green';
+      return `<tr><td><span class="pill ${cls}">${r.urgency}</span></td><td class="mono">${r.systolic}/${r.diastolic}</td><td class="mono" style="font-size:11px;">${new Date(r.sla_deadline).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td><td class="mono" style="font-size:11.5px;">${r.patient_id.slice(0,8)}…</td><td class="mono" style="font-size:11px;color:var(--text-secondary);">${r.status}</td><td><button class="btn btn-sm" onclick="openRef('${r.id}','${r.patient_id}')">Open</button></td></tr>`;
+    }).join('')
+  }</tbody></table>`;
+  const params = new URLSearchParams(location.search);
+  const refParam = params.get('ref');
+  if (refParam) {
+    const target = j.queue.find(q => q.id === refParam);
+    if (target) openRef(target.id, target.patient_id);
+  }
+}
+async function openRef(rid, pid) {
+  sel = {rid, pid};
+  const [st, hist] = await Promise.all([
+    fetch('/api/loop/state/'+pid).then(r=>r.json()),
+    fetch('/api/referrals/'+rid+'/history').then(r=>r.json()),
+  ]);
+  const p = document.getElementById('panel');
+  p.style.display = 'block';
+  p.innerHTML = `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div><h3 style="font-size:14px;margin:0;">Referral ${rid.slice(0,8)}…</h3><p class="muted" style="font-size:12px;margin:4px 0 0;">State: <span class="mono">${st.current_state}</span></p></div>
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('panel').style.display='none'">Close</button>
+    </div>
+    <div id="acts"></div>
+    <div id="err" style="display:none;color:var(--danger);font-size:13px;margin-top:8px;"></div>
+  </div>`;
+  renderActs(st.current_state);
+  attachConsultation(rid);
+}
+
+async function attachConsultation(rid) {
+  const card = document.querySelector('#panel .card');
+  if (!card || document.getElementById('consult-section')) return;
+  const section = document.createElement('div');
+  section.id = 'consult-section';
+  section.style.cssText = 'margin-top:16px;padding-top:16px;border-top:1px solid var(--border-subtle);';
+  section.innerHTML = `
+    <h4 style="font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span>Case consultation</span>
+      <span style="font-size:10px;color:var(--teal);font-weight:600;letter-spacing:0.05em;">ON AUDIT CHAIN</span>
+    </h4>
+    <div id="consult-thread" class="muted" style="font-size:12px;max-height:200px;overflow-y:auto;margin-bottom:8px;">Loading…</div>
+    <div style="display:flex;gap:6px;">
+      <input class="input" id="msg-input" placeholder="Message the referring pharmacist…" style="flex:1;font-size:12px;">
+      <button class="btn btn-sm btn-primary" onclick="sendMsg('${rid}')">Send</button>
+    </div>
+  `;
+  card.appendChild(section);
+  loadMsgs(rid);
+}
+
+async function loadMsgs(rid) {
+  const el = document.getElementById('consult-thread');
+  if (!el) return;
+  try {
+    const j = await (await fetch('/api/referrals/' + rid + '/messages')).json();
+    if (!j.messages || !j.messages.length) {
+      el.innerHTML = '<em>No messages yet. Every message is signed and chained — none of this lives in a WhatsApp group.</em>';
+    } else {
+      el.innerHTML = j.messages.map(m =>
+        '<div style="padding:6px 10px;margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:6px;border-left:2px solid var(--teal);">' +
+          '<div style="font-size:10px;opacity:0.6;margin-bottom:2px;">' + m.from_role + ' · ' + new Date(m.created_at).toLocaleString() + '</div>' +
+          '<div style="color:var(--text-primary);">' + escapeHtml(m.body) + '</div>' +
+        '</div>'
+      ).join('');
+    }
+  } catch(e) { el.textContent = 'Thread unavailable: ' + e.message; }
+}
+
+async function sendMsg(rid) {
+  const inp = document.getElementById('msg-input');
+  if (!inp) return;
+  const body = inp.value.trim();
+  if (!body) return;
+  inp.disabled = true;
+  try {
+    const r = await fetch('/api/referrals/' + rid + '/message', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({body}),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error || j.message || 'Send failed');
+    inp.value = '';
+    loadMsgs(rid);
+    toast('Message recorded on chain', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+  finally { inp.disabled = false; }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderActs(state) {
+  const a = document.getElementById('acts');
+  if (state === 'REFERRAL_CREATED') {
+    a.innerHTML = `
+      <button class="btn btn-primary" onclick="act('/api/referrals/${sel.rid}/accept',{actor_id:'hospital@onecare.demo'})">✓ Accept</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:8px;">
+        <label class="field" style="margin:0;"><span class="field-label">Reason</span><input class="input" id="dr" value="no_slots"></label>
+        <label class="field" style="margin:0;"><span class="field-label">Redirect to</span><input class="input" id="dn" value="HOSP-B"></label>
+        <button class="btn btn-outline" onclick="act('/api/referrals/${sel.rid}/decline',{actor_id:'hospital@onecare.demo',reason_code:document.getElementById('dr').value,owner:'care_navigator',next_facility_id:document.getElementById('dn').value})">Decline</button>
+      </div>`;
+  } else if (state === 'FACILITY_ACCEPTED') {
+    a.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <label class="field" style="margin:0;"><span class="field-label">Slot start</span><input class="input" type="datetime-local" id="ss" value="2026-11-20T09:00"></label>
+        <label class="field" style="margin:0;"><span class="field-label">Slot end</span><input class="input" type="datetime-local" id="se" value="2026-11-20T09:30"></label>
+      </div>
+      <button class="btn btn-primary" onclick="act('/api/referrals/${sel.rid}/book',{actor_id:'hospital@onecare.demo',slot_start:new Date(document.getElementById('ss').value).toISOString(),slot_end:new Date(document.getElementById('se').value).toISOString()})">Book →</button>`;
+  } else if (state === 'APPOINTMENT_BOOKED') {
+    a.innerHTML = `<button class="btn btn-primary" onclick="act('/api/referrals/${sel.rid}/attest',{actor_id:'hospital@onecare.demo',clinician_id:'doc@onecare.demo'})">✓ Mark attended</button>`;
+  } else if (state === 'CLINICAL_ENCOUNTER_COMPLETED') {
+    a.innerHTML = `
+      <label class="field"><span class="field-label">Outcome</span><input class="input" id="oc" value="started_medication"></label>
+      <label class="field"><span class="field-label">Next step</span><input class="input" id="ns" value="BP review in 30 days"></label>
+      <button class="btn btn-primary" onclick="act('/api/referrals/${sel.rid}/counter-refer',{actor_id:'doc@onecare.demo',clinician_id:'doc@onecare.demo',outcome:document.getElementById('oc').value,next_step:document.getElementById('ns').value})">Close the loop →</button>`;
+  } else if (state === 'CLINICAL_DISPOSITION_RETURNED') {
+    a.innerHTML = `<div class="pill pill-green">✓ Loop closed</div>`;
+  }
+}
+async function act(url, body) {
+  document.getElementById('err').style.display = 'none';
+  try {
+    const r = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.message || j.error);
+    await openRef(sel.rid, sel.pid);
+    await loadQ();
+    toast('Updated', 'success');
+  } catch (e) {
+    const err = document.getElementById('err');
+    err.textContent = e.message; err.style.display = 'block';
+  }
+}
+loadQ();
+</script>
+{% endblock %}

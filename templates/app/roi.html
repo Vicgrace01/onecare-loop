@@ -1,0 +1,126 @@
+{% extends "app/base.html" %}
+{% block title %}ROI calculator — OneCare Loop{% endblock %}
+{% block page_title %}ROI calculator{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>What the loop is worth</h2>
+    <p>Every closed loop is a prevented admission. Every prevented admission is money the payer does not spend.</p>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+  <div class="card">
+    <h3 style="font-size:14px;margin-bottom:var(--sp-4);">Inputs</h3>
+    <div class="stack" style="gap:16px;display:grid;">
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">Patients screened per month</span>
+        <input class="input" type="number" id="in-patients" value="500" min="1">
+      </label>
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">Positive rate (%)</span>
+        <input class="input" type="number" id="in-positive" value="25" min="1" max="100">
+      </label>
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">Baseline closure rate (%)</span>
+        <input class="input" type="number" id="in-baseline" value="35" min="0" max="100">
+      </label>
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">With OneCare closure rate (%)</span>
+        <input class="input" type="number" id="in-with" value="68" min="0" max="100">
+      </label>
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">Value per closed loop (₦)</span>
+        <input class="input" type="number" id="in-value" value="6000" min="0">
+      </label>
+
+      <label class="field" style="margin:0;">
+        <span class="field-label">OneCare cost per patient screened (₦)</span>
+        <input class="input" type="number" id="in-cost" value="800" min="0">
+      </label>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:14px;margin-bottom:var(--sp-4);">Outputs</h3>
+    <div id="outputs"></div>
+    <div style="margin-top:16px;padding:12px;background:rgba(255,176,136,0.08);border-left:3px solid var(--peach);border-radius:6px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;">
+      <strong>Honest note:</strong> value-per-closed-loop is a placeholder figure. Before pilot, replace it with a negotiated rate from the payer. These numbers demonstrate the model, not a business commitment.
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fmtN(v) { return '₦' + Math.round(v).toLocaleString(); }
+
+function calc() {
+  const patients = +document.getElementById('in-patients').value || 0;
+  const positivePct = (+document.getElementById('in-positive').value || 0) / 100;
+  const baseline = (+document.getElementById('in-baseline').value || 0) / 100;
+  const withLoop = (+document.getElementById('in-with').value || 0) / 100;
+  const value = +document.getElementById('in-value').value || 0;
+  const cost = +document.getElementById('in-cost').value || 0;
+
+  const positive = patients * positivePct;
+  const baselineClosed = positive * baseline;
+  const withClosed = positive * withLoop;
+  const extraClosed = Math.max(0, withClosed - baselineClosed);
+
+  const valueMonthly = extraClosed * value;
+  const costMonthly = patients * cost;
+  const netMonthly = valueMonthly - costMonthly;
+  const valueAnnual = valueMonthly * 12;
+  const netAnnual = netMonthly * 12;
+  const roi = costMonthly > 0 ? (netMonthly / costMonthly) * 100 : 0;
+
+  document.getElementById('outputs').innerHTML = `
+    <div class="stack" style="gap:14px;display:grid;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">Positive screenings / month</span>
+        <span class="mono" style="font-size:14px;">${Math.round(positive)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">Extra closed loops / month</span>
+        <span class="mono" style="font-size:14px;color:var(--teal);">+${Math.round(extraClosed)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;border-top:1px solid var(--border-subtle);">
+        <span class="muted" style="font-size:13px;">Value recovered / month</span>
+        <span class="mono" style="font-size:15px;color:var(--teal);">${fmtN(valueMonthly)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">OneCare cost / month</span>
+        <span class="mono" style="font-size:14px;">${fmtN(costMonthly)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">Net / month</span>
+        <span class="mono" style="font-size:14px;color:${netMonthly >= 0 ? 'var(--success)' : 'var(--danger)'};">${fmtN(netMonthly)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;border-top:1px solid var(--border-subtle);">
+        <span class="muted" style="font-size:13px;">Annualised value recovered</span>
+        <span class="mono" style="font-size:15px;color:var(--teal);">${fmtN(valueAnnual)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">Annualised net</span>
+        <span class="mono" style="font-size:15px;color:${netAnnual >= 0 ? 'var(--success)' : 'var(--danger)'};">${fmtN(netAnnual)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="muted" style="font-size:13px;">ROI</span>
+        <span class="mono" style="font-size:15px;color:${roi >= 0 ? 'var(--success)' : 'var(--danger)'};">${roi.toFixed(0)}%</span>
+      </div>
+    </div>
+  `;
+}
+
+document.querySelectorAll('#in-patients, #in-positive, #in-baseline, #in-with, #in-value, #in-cost').forEach(el => {
+  el.oninput = calc;
+});
+calc();
+</script>
+{% endblock %}

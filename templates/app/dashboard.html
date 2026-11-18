@@ -1,0 +1,100 @@
+{% extends "app/base.html" %}
+{% block title %}Dashboard — OneCare Loop{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Good day, <span id="greet-name">there</span>.</h2>
+    <p>Here's what's happening across your care network today.</p>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <a href="/app/referrals" class="btn btn-outline btn-sm">View all referrals →</a>
+  </div>
+</div>
+
+<div class="stats-grid" id="stats">
+  <div class="stat-card">
+    <div class="stat-label">Total patients</div>
+    <div class="stat-value" data-stat="total_patients">—</div>
+    <div class="stat-meta">Across all referral cycles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Closed loops</div>
+    <div class="stat-value" data-stat="closed_loops">—</div>
+    <div class="stat-meta"><span class="up">●</span> <span data-stat="closure_rate">—</span> closure rate</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Median time-to-care</div>
+    <div class="stat-value" data-stat="time_to_care_median_hours">—</div>
+    <div class="stat-meta">Hours from screening to disposition</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Value recovered</div>
+    <div class="stat-value" data-stat="money_recovered">—</div>
+    <div class="stat-meta">Simulated · ₦6,000 per closed loop</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-4);">
+  <div class="table-wrap">
+    <div style="padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 14px;">Recent referrals</h3>
+      <a href="/app/referrals" class="btn btn-ghost btn-sm">View all →</a>
+    </div>
+    <div id="recent-referrals"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size: 14px; margin-bottom: var(--sp-4);">Failure breakdown</h3>
+    <div id="failures"></div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+(async function () {
+  // Greet
+  try {
+    const me = await (await fetch('/auth/me')).json();
+    const name = (me.user.name || '').split(' ')[0] || 'there';
+    document.getElementById('greet-name').textContent = name;
+  } catch (e) {}
+
+  // Stats
+  try {
+    const j = await (await fetch('/api/metrics')).json();
+    document.querySelector('[data-stat="total_patients"]').textContent = j.total_patients ?? 0;
+    document.querySelector('[data-stat="closed_loops"]').textContent = j.closed_loops ?? 0;
+    document.querySelector('[data-stat="closure_rate"]').textContent = ((j.closure_rate || 0) * 100).toFixed(1) + '%';
+    document.querySelector('[data-stat="time_to_care_median_hours"]').textContent = (j.time_to_care_median_hours ?? 0).toFixed(1) + 'h';
+    document.querySelector('[data-stat="money_recovered"]').textContent = '₦' + (j.money_recovered_naira || 0).toLocaleString();
+
+    const f = document.getElementById('failures');
+    const keys = Object.keys(j.failure_breakdown || {});
+    if (!keys.length) {
+      f.innerHTML = '<p class="muted" style="font-size:13px;">No failures logged. Run a decline from the referrals page.</p>';
+    } else {
+      f.innerHTML = keys.map(k => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border-subtle);"><span class="muted">${k}</span><span class="pill pill-red">${j.failure_breakdown[k]}</span></div>`).join('');
+    }
+  } catch (e) {}
+
+  // Recent referrals
+  try {
+    const q = await (await fetch('/api/hospital/queue')).json();
+    const el = document.getElementById('recent-referrals');
+    if (!q.queue || !q.queue.length) {
+      el.innerHTML = '<div class="empty"><h3>No open referrals</h3><p>Screen a patient to start a loop.</p></div>';
+    } else {
+      el.innerHTML = `<table class="data-table"><thead><tr><th>Patient</th><th>BP</th><th>Urgency</th><th>SLA</th><th>State</th></tr></thead><tbody>${
+        q.queue.slice(0, 5).map(r => {
+          const urg = r.urgency === 'emergency' ? 'pill-red' : r.urgency === 'urgent' ? 'pill-amber' : 'pill-green';
+          return `<tr><td class="mono">${r.patient_id.slice(0,8)}…</td><td class="mono">${r.systolic}/${r.diastolic}</td><td><span class="pill ${urg}">${r.urgency}</span></td><td class="mono" style="font-size:11.5px;">${r.sla_deadline ? new Date(r.sla_deadline).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</td><td class="mono" style="font-size:11px;color:var(--text-secondary);">${r.status}</td></tr>`;
+        }).join('')
+      }</tbody></table>`;
+    }
+  } catch (e) {}
+})();
+</script>
+{% endblock %}

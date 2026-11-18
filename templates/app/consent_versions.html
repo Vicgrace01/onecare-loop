@@ -1,0 +1,52 @@
+{% extends "app/base.html" %}
+{% block title %}Consent log — OneCare Loop{% endblock %}
+{% block page_title %}Consent version log{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Consent version log</h2>
+    <p>Every consent version ever granted, in the order it was granted. Append-only.</p>
+  </div>
+</div>
+<div class="table-wrap" id="tbl"><div class="empty"><h3>Loading…</h3></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(async function(){
+  const exp = await (await fetch('/api/audit/export')).text();
+  const events = exp.split('\n').filter(Boolean).map(l => JSON.parse(l));
+  const consentEvents = events.filter(e => e.event_type === 'SCREEN_POSITIVE' && e.payload_json);
+  const el = document.getElementById('tbl');
+  const rows = [];
+  for (const ev of consentEvents) {
+    try {
+      const p = JSON.parse(ev.payload_json);
+      if (p.consent_version) {
+        rows.push({
+          patient_id: ev.patient_id,
+          version: p.consent_version,
+          hash: p.consent_hash || '—',
+          granted_at: ev.occurred_at,
+          event_hash: ev.hash,
+        });
+      }
+    } catch (e) {}
+  }
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty"><h3>No consent events yet</h3><p>Screen a patient to create one.</p></div>';
+    return;
+  }
+  el.innerHTML = `<table class="data-table"><thead><tr><th>Patient</th><th>Consent version</th><th>Consent hash</th><th>Granted at</th><th>Event hash</th></tr></thead><tbody>${
+    rows.reverse().map(r => `
+      <tr>
+        <td class="mono" style="font-size:11.5px;">${r.patient_id.slice(0,10)}…</td>
+        <td><span class="pill pill-teal">${r.version}</span></td>
+        <td class="mono" style="font-size:11px;color:var(--text-secondary);">${r.hash.slice(0,16)}…</td>
+        <td class="mono" style="font-size:11px;">${new Date(r.granted_at).toLocaleString()}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-tertiary);">${r.event_hash.slice(0,16)}…</td>
+      </tr>
+    `).join('')
+  }</tbody></table>`;
+})();
+</script>
+{% endblock %}

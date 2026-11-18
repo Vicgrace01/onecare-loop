@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set active = "patient" %}
+{% block title %}Patient — OneCare Loop{% endblock %}
+{% block content %}
+<div class="thread-wrap" id="thread-root">
+  <div class="card text-center" style="margin-bottom: var(--space-4);">
+    <p class="muted" style="font-size: 13px; margin-bottom: var(--space-3);">Enter a patient ID, or use the last one from the pharmacy flow.</p>
+    <div style="display: flex; gap: var(--space-2);">
+      <input class="input" id="patient-input" placeholder="patient UUID" style="flex: 1;">
+      <button class="btn btn-green" id="load-btn">Load</button>
+    </div>
+  </div>
+
+  <div id="thread-content" style="display: none;">
+    <div class="thread-header">
+      <div class="thread-avatar">◉</div>
+      <div class="thread-header-info" style="flex: 1;">
+        <h3>OneCare Loop</h3>
+        <p id="thread-status">Verified · online</p>
+      </div>
+      <span id="thread-badge" class="state-pill state-positive" style="font-size: 10px;">VERIFIED ✓</span>
+    </div>
+    <div class="thread" id="thread"></div>
+    <div style="display: grid; gap: var(--space-3); margin-top: var(--space-4);">
+      <button class="btn btn-green btn-full" id="verify-btn">Verify chain again</button>
+      <button class="btn btn-outline btn-full" id="confirm-btn">I attended my appointment</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/buttons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/patient.js') }}"></script>
+{% endblock %}

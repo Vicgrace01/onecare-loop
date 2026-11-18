@@ -1,0 +1,56 @@
+{% extends "app/base.html" %}
+{% block title %}Profile — OneCare Loop{% endblock %}
+{% block page_title %}Profile{% endblock %}
+{% block content %}
+
+<div class="profile-head" id="profile-head">
+  <div class="avatar-lg" id="profile-avatar">—</div>
+  <div style="flex:1;">
+    <h2 id="profile-name">Loading…</h2>
+    <div class="role" id="profile-role"></div>
+    <div class="email" id="profile-email"></div>
+  </div>
+  <a href="/app/settings" class="btn btn-outline btn-sm">Edit profile</a>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);">
+  <div class="card">
+    <h3 style="font-size: 14px; margin-bottom: var(--sp-4);">Account details</h3>
+    <div id="details"></div>
+  </div>
+  <div class="card">
+    <h3 style="font-size: 14px; margin-bottom: var(--sp-4);">Security</h3>
+    <p class="muted" style="font-size: 13px; margin-bottom: var(--sp-4);">Password changes are disabled in the demo environment.</p>
+    <button class="btn btn-outline btn-sm" disabled>Change password</button>
+    <button class="btn btn-danger btn-sm" style="margin-left: 8px;" id="signout-btn">Sign out of all devices</button>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+(async function () {
+  const j = await (await fetch('/auth/me')).json();
+  const u = j.user;
+  const initials = (u.name || u.email).split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('profile-avatar').textContent = initials;
+  document.getElementById('profile-name').textContent = u.name || u.email;
+  document.getElementById('profile-role').textContent = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+  document.getElementById('profile-email').textContent = u.email;
+
+  document.getElementById('details').innerHTML = `
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;justify-content:space-between;"><span class="muted" style="font-size:13px;">Full name</span><span style="font-size:13px;font-weight:500;">${u.name || '—'}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span class="muted" style="font-size:13px;">Email</span><span class="mono" style="font-size:12.5px;">${u.email}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span class="muted" style="font-size:13px;">Role</span><span class="pill pill-teal">${u.role}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span class="muted" style="font-size:13px;">Organisation</span><span style="font-size:13px;">${u.org || '—'}</span></div>
+    </div>
+  `;
+
+  document.getElementById('signout-btn').onclick = async () => {
+    await fetch('/auth/logout', { method: 'POST' });
+    window.location.href = '/';
+  };
+})();
+</script>
+{% endblock %}

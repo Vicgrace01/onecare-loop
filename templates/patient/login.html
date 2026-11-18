@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — OneCare Loop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+<style>
+  .pwrap { min-height: 100vh; padding: 32px 24px 64px; }
+  .pcard { width: 100%; max-width: 640px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; text-decoration: none; }
+  .brand .word { font-family: var(--font-head); font-size: 1.05rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+  .brand .word .dot { color: var(--peach); }
+
+  .head h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: 8px; letter-spacing: -0.03em; color: var(--text-primary); }
+  .head p { color: var(--text-secondary); font-size: 14.5px; margin-bottom: 28px; }
+
+  .picker-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+  }
+
+  .patient-list { display: grid; gap: 10px; margin-bottom: 32px; }
+  .patient-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: transform 200ms var(--ease-out), border-color 200ms ease, box-shadow 200ms ease;
+    will-change: transform;
+    opacity: 0;
+    animation: card-in 500ms var(--ease-out) forwards;
+  }
+  .patient-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--teal);
+    box-shadow: 0 8px 24px rgba(45,212,168,0.12);
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .patient-card:nth-child(1) { animation-delay: 60ms; }
+  .patient-card:nth-child(2) { animation-delay: 120ms; }
+  .patient-card:nth-child(3) { animation-delay: 180ms; }
+  .patient-card:nth-child(4) { animation-delay: 240ms; }
+  .patient-card:nth-child(5) { animation-delay: 300ms; }
+  .patient-card:nth-child(6) { animation-delay: 360ms; }
+
+  .pc-avatar {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--peach));
+    display: grid; place-items: center;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--bg-base);
+    flex-shrink: 0;
+  }
+  .pc-body { flex: 1; min-width: 0; }
+  .pc-name {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .pc-meta {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .pc-meta .sep { opacity: 0.4; }
+  .pc-status {
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+  .pc-status.closed { background: var(--teal-dim); color: var(--teal); }
+  .pc-status.progress { background: rgba(251,191,36,0.15); color: var(--warning); }
+  .pc-status.new { background: rgba(255,176,136,0.15); color: var(--peach); }
+  .pc-status.failed { background: rgba(248,113,113,0.15); color: var(--danger); }
+  .pc-arrow {
+    color: var(--text-tertiary);
+    font-size: 16px;
+    transition: color 200ms ease, transform 200ms ease;
+  }
+  .patient-card:hover .pc-arrow { color: var(--teal); transform: translateX(3px); }
+
+  .skeleton-card {
+    height: 82px;
+    border-radius: var(--r-lg);
+    background: linear-gradient(90deg, var(--bg-surface) 0%, var(--bg-elevated) 50%, var(--bg-surface) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    margin-bottom: 10px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .empty-picker {
+    padding: 32px 24px;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-lg);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .empty-picker a { color: var(--teal); }
+
+  .or-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ""; flex: 1; height: 1px; background: var(--border-subtle);
+  }
+
+  .otp-form-card {
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+  }
+  .otp-form-card h3 { font-size: 14px; margin-bottom: 6px; color: var(--text-primary); }
+  .otp-form-card p { font-size: 12.5px; color: var(--text-tertiary); margin-bottom: 16px; line-height: 1.5; }
+
+  .step { display: none; }
+  .step.active { display: block; animation: fade-up 400ms var(--ease-out); }
+  @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .otp-input { font-family: var(--font-mono); font-size: 24px; letter-spacing: 8px; text-align: center; padding: 16px; }
+  .dev-note { padding: 12px 14px; background: rgba(232,163,23,0.1); border: 1px solid rgba(232,163,23,0.3); border-radius: var(--r-md); font-size: 12px; color: var(--warning); margin-bottom: 16px; }
+  .dev-note .code { font-family: var(--font-mono); font-size: 20px; font-weight: 700; letter-spacing: 4px; display: block; margin-top: 6px; color: var(--text-primary); }
+  .err { display: none; padding: 10px 14px; background: rgba(248,113,113,0.1); border: 1px solid var(--danger); border-radius: var(--r-md); color: var(--danger); font-size: 13px; margin-top: 12px; }
+  .err.show { display: block; }
+  .back-btn { background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 0; margin-bottom: 16px; }
+  .back-btn:hover { color: var(--text-primary); }
+
+  .home-link {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 12.5px;
+  }
+  .home-link a { color: var(--text-tertiary); text-decoration: none; }
+  .home-link a:hover { color: var(--teal); }
+</style>
+</head>
+<body>
+<div class="pwrap">
+  <div class="pcard">
+    <a href="/" class="brand">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+        <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+        <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+      </svg>
+      <span class="word">onecare<span class="dot">.</span>loop</span>
+    </a>
+
+    <div class="head">
+      <h1>Sign in as a patient</h1>
+      <p>Pick a patient to walk through their care journey — or sign in with your own phone number.</p>
+    </div>
+
+    <div class="picker-label">Demo patients</div>
+
+    <div class="patient-list" id="patient-list">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+
+    <div class="empty-picker" id="empty-picker" style="display:none;">
+      No patients on file yet. Run a screening from <a href="/demo/pharmacy">the pharmacy demo</a>, then come back.
+    </div>
+
+    <div class="or-divider">or sign in with phone</div>
+
+    <div class="otp-form-card">
+      <div class="step active" id="step-phone">
+        <h3>Enter your phone number</h3>
+        <p>We'll send a 6-digit code. Only patients already on file can sign in this way.</p>
+        <form id="phone-form">
+          <label class="field">
+            <span class="field-label">Phone number</span>
+            <input class="input" type="tel" id="phone-input" placeholder="+2348012345678" required>
+          </label>
+          <button type="submit" class="btn btn-primary btn-full" id="phone-btn">Send code</button>
+          <div id="phone-err" class="err"></div>
+        </form>
+      </div>
+
+      <div class="step" id="step-otp">
+        <button class="back-btn" onclick="showStep('phone')">← Use a different number</button>
+        <h3>Enter your code</h3>
+        <p>We sent a 6-digit code to your phone.</p>
+
+        <div id="dev-note" class="dev-note" style="display:none;">
+          <strong>Dev mode — code:</strong>
+          <span class="code" id="dev-code"></span>
+        </div>
+
+        <form id="otp-form">
+          <label class="field">
+            <span class="field-label">6-digit code</span>
+            <input class="input otp-input" type="text" id="otp-input" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="000000" required>
+          </label>
+          <button type="submit" class="btn btn-primary btn-full" id="otp-btn">Verify →</button>
+          <div id="otp-err" class="err"></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="home-link">
+      <a href="/">← Back to homepage</a>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/ui.js"></script>
+<script>
+const state = { patient_id: null };
+
+const STATE_LABEL = {
+  NONE: { text: "Not yet screened", cls: "new" },
+  SCREEN_POSITIVE: { text: "Screened", cls: "progress" },
+  REFERRAL_CREATED: { text: "Referred", cls: "progress" },
+  FACILITY_ACCEPTED: { text: "Accepted", cls: "progress" },
+  APPOINTMENT_BOOKED: { text: "Booked", cls: "progress" },
+  CLINICAL_ENCOUNTER_COMPLETED: { text: "Seen", cls: "progress" },
+  CLINICAL_DISPOSITION_RETURNED: { text: "Loop closed", cls: "closed" },
+  REFERRAL_DECLINED: { text: "Declined", cls: "failed" },
+  FACILITY_UNAVAILABLE: { text: "Unavailable", cls: "failed" },
+  APPOINTMENT_MISSED: { text: "Missed", cls: "failed" },
+  PATIENT_UNREACHABLE: { text: "Unreachable", cls: "failed" },
+  PATIENT_DECLINED: { text: "Declined", cls: "failed" },
+  PATIENT_REQUESTED_RESCHEDULE: { text: "Reschedule", cls: "progress" },
+  REFERRAL_REDIRECTED: { text: "Redirected", cls: "progress" },
+  FOLLOWUP_OVERDUE: { text: "Follow-up overdue", cls: "failed" },
+};
+
+async function loadPatients() {
+  try {
+    const r = await fetch('/patient/login/demo-phones');
+    if (!r.ok) { document.getElementById('patient-list').innerHTML = ''; document.getElementById('empty-picker').style.display = 'block'; return; }
+    const j = await r.json();
+    const list = document.getElementById('patient-list');
+    if (!j.patients || !j.patients.length) {
+      list.innerHTML = '';
+      document.getElementById('empty-picker').style.display = 'block';
+      return;
+    }
+    list.innerHTML = j.patients.map(p => {
+      const initials = (p.display_name || 'P').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+      const st = STATE_LABEL[p.state] || { text: p.state, cls: "progress" };
+      return `
+        <a href="/patient/demo-login/${encodeURIComponent(p.patient_id)}" class="patient-card">
+          <div class="pc-avatar">${initials}</div>
+          <div class="pc-body">
+            <div class="pc-name">${escapeHtml(p.display_name)}</div>
+            <div class="pc-meta">
+              <span>${escapeHtml(p.phone)}</span>
+              <span class="sep">·</span>
+              <span>${p.event_count} event${p.event_count === 1 ? '' : 's'}</span>
+              <span class="pc-status ${st.cls}">${st.text}</span>
+            </div>
+          </div>
+          <div class="pc-arrow">→</div>
+        </a>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('patient-list').innerHTML = '';
+    document.getElementById('empty-picker').style.display = 'block';
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showStep(name) {
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+  document.getElementById('step-' + name).classList.add('active');
+  const input = document.querySelector('.step.active input');
+  if (input) input.focus();
+}
+
+document.getElementById('phone-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('phone-err');
+  const btn = document.getElementById('phone-btn');
+  err.classList.remove('show');
+  btn.disabled = true; btn.classList.add('btn-loading'); btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/patient/login/request-otp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: document.getElementById('phone-input').value.trim() }),
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Could not send code');
+
+    if (j.known) {
+      state.patient_id = j.patient_id;
+      document.getElementById('dev-note').style.display = j.dev_code ? 'block' : 'none';
+      if (j.dev_code) {
+        document.getElementById('dev-code').textContent = j.dev_code;
+        document.getElementById('otp-input').value = j.dev_code;
+      }
+      showStep('otp');
+    } else {
+      err.textContent = 'That number is not on file. Pick a patient above, or ask your pharmacy to screen you.';
+      err.classList.add('show');
+    }
+  } catch (e) {
+    err.textContent = e.message; err.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.classList.remove('btn-loading'); btn.textContent = 'Send code';
+  }
+};
+
+document.getElementById('otp-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('otp-err');
+  const btn = document.getElementById('otp-btn');
+  err.classList.remove('show');
+  btn.disabled = true; btn.classList.add('btn-loading'); btn.textContent = 'Verifying…';
+  try {
+    const r = await fetch('/patient/login/verify-otp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: state.patient_id, code: document.getElementById('otp-input').value.trim() }),
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error === 'invalid_code' ? 'Wrong code. Try again.' : j.error);
+    window.location.href = j.redirect;
+  } catch (e) {
+    err.textContent = e.message; err.classList.add('show');
+    btn.disabled = false; btn.classList.remove('btn-loading'); btn.textContent = 'Verify →';
+  }
+};
+
+loadPatients();
+</script>
+</body>
+</html>

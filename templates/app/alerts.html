@@ -1,0 +1,59 @@
+{% extends "app/base.html" %}
+{% block title %}Red flag alerts — OneCare Loop{% endblock %}
+{% block page_title %}Red flag alerts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Red flag alerts</h2>
+    <p>Human-in-the-loop escalation. Every acknowledgment is recorded on the patient's audit chain.</p>
+  </div>
+  <button class="btn btn-sm btn-outline" onclick="loadAlerts()">Refresh</button>
+</div>
+<div class="card" style="margin-bottom:16px;padding:12px 16px;background:rgba(248,113,113,0.06);border-left:3px solid var(--danger);font-size:12.5px;color:var(--text-secondary);line-height:1.6;">
+  <strong>Honest note:</strong> This is a log, not an incident system. No ambulance is paged. Real emergency dispatch is Coming Soon. Acknowledgment means a named human has taken ownership — the event is signed and chained.
+</div>
+<div id="alerts-wrap"><div class="empty"><h3>Loading…</h3></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadAlerts() {
+  try {
+    const j = await (await fetch('/api/red-flags')).json();
+    const el = document.getElementById('alerts-wrap');
+    if (!j.alerts || !j.alerts.length) {
+      el.innerHTML = '<div class="empty"><h3>No open red flags</h3><p>When a patient is screened with emergency BP plus symptoms, an alert appears here for a human to acknowledge.</p></div>';
+      return;
+    }
+    el.innerHTML = '<table class="data-table"><thead><tr><th>Created</th><th>Type</th><th>Reason</th><th>Owner</th><th>Status</th><th></th></tr></thead><tbody>' +
+      j.alerts.map(a => `
+        <tr>
+          <td class="mono" style="font-size:11px;">${a.created_at ? new Date(a.created_at).toLocaleString() : '—'}</td>
+          <td class="mono" style="font-size:11.5px;">${a.event_type || '—'}</td>
+          <td class="mono" style="font-size:11px;">${a.reason_code || '—'}</td>
+          <td class="mono" style="font-size:11px;color:${a.owner ? 'var(--teal)' : 'var(--danger)'};">${a.owner || 'UNASSIGNED'}</td>
+          <td class="mono" style="font-size:11px;">${a.resolved_at ? 'resolved' : 'open'}</td>
+          <td><button class="btn btn-sm btn-primary" onclick="ack('${a.id}')">Acknowledge</button></td>
+        </tr>
+      `).join('') +
+    '</tbody></table>';
+  } catch(e) {
+    document.getElementById('alerts-wrap').innerHTML = '<div class="empty"><h3>Alerts unavailable</h3><p>' + e.message + '</p></div>';
+  }
+}
+async function ack(id) {
+  const note = prompt('Ownership note (optional):', '');
+  if (note === null) return;
+  try {
+    const r = await fetch('/api/red-flags/' + id + '/acknowledge', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({note: note || ''}),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error || 'Acknowledge failed');
+    toast('Acknowledged — recorded on chain', 'success');
+    loadAlerts();
+  } catch(e) { toast(e.message, 'error'); }
+}
+loadAlerts();
+</script>
+{% endblock %}

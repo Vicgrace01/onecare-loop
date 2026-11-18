@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify a chain — OneCare Loop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+<style>
+  .vwrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 24px; }
+  .vcard { width: 100%; max-width: 640px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-xl); padding: 40px; }
+  .vcard h1 { font-size: 1.75rem; margin-bottom: 8px; letter-spacing: -0.025em; }
+  .vcard .sub { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; line-height: 1.55; }
+  .vresult { margin-top: 24px; padding: 20px; border-radius: var(--r-lg); border: 1px solid var(--border-subtle); }
+  .vresult.ok { border-color: var(--teal); background: rgba(45,212,168,0.06); }
+  .vresult.broken { border-color: var(--danger); background: rgba(248,113,113,0.06); }
+  .vresult h3 { font-size: 15px; margin-bottom: 8px; }
+  .vresult .meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); line-height: 1.9; }
+  .vresult .hash { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); word-break: break-all; background: rgba(0,0,0,0.2); padding: 6px 8px; border-radius: 4px; margin-top: 4px; }
+  .err { display: none; padding: 10px 14px; background: rgba(248,113,113,0.1); border: 1px solid var(--danger); border-radius: var(--r-md); color: var(--danger); font-size: 13px; margin-top: 12px; }
+  .err.show { display: block; }
+</style>
+</head>
+<body>
+<div class="vwrap">
+  <div class="vcard">
+    <a href="/" class="logo-mark" style="margin-bottom: 20px; display: inline-flex;">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+        <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+        <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+      </svg>
+      <span class="logo-word">onecare<span class="dot">.</span>loop</span>
+    </a>
+
+    <h1>Verify a care chain</h1>
+    <p class="sub">
+      Any patient receipt contains a patient ID. Paste it here to independently verify the cryptographic chain that proves every care event happened — and that none of them were altered after the fact.
+    </p>
+
+    <form id="vform">
+      <label class="field">
+        <span class="field-label">Patient ID (from a receipt)</span>
+        <input class="input" type="text" id="pid" placeholder="d4a1df5e-6c96-40db-a803-dfde456207a3" required autofocus>
+      </label>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" id="vbtn">Verify chain →</button>
+      <div id="verr" class="err"></div>
+    </form>
+
+    <div id="vresult"></div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="/" style="font-size: 12px; color: var(--text-tertiary);">← Back to OneCare Loop</a>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/ui.js"></script>
+<script>
+document.getElementById("vform").onsubmit = async (e) => {
+  e.preventDefault();
+  const err = document.getElementById("verr");
+  const btn = document.getElementById("vbtn");
+  const result = document.getElementById("vresult");
+  err.classList.remove("show");
+  result.innerHTML = "";
+  btn.disabled = true;
+  btn.classList.add("btn-loading");
+  btn.textContent = "Verifying…";
+  try {
+    const pid = document.getElementById("pid").value.trim();
+    const r = await fetch("/api/audit/verify/" + encodeURIComponent(pid));
+    const j = await r.json();
+    if (j.events === 0) throw new Error("No events found for that patient ID");
+    if (j.ok) {
+      result.innerHTML = `
+        <div class="vresult ok">
+          <h3>✓ Chain verified</h3>
+          <div class="meta">
+            <div>Events in chain: <strong>${j.events}</strong></div>
+            <div>Signed by actors: <strong>${j.signed || 0}</strong></div>
+            <div>Head sequence: <strong>${j.head_seq}</strong></div>
+            <div>Head hash:</div>
+            <div class="hash">${j.head_hash}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      result.innerHTML = `
+        <div class="vresult broken">
+          <h3>✗ Chain broken</h3>
+          <div class="meta">
+            <div>Broken at seq <strong>${j.broken_at?.seq}</strong> (${j.broken_at?.reason})</div>
+            <div>Event ID: <span class="hash">${j.broken_at?.event_id || "unknown"}</span></div>
+            <div style="margin-top:8px; color: var(--danger); font-size:11px;">
+              This means a care event was modified after it was recorded. The chain preserved the proof of tampering.
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add("show");
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove("btn-loading");
+    btn.textContent = "Verify chain →";
+  }
+};
+</script>
+</body>
+</html>

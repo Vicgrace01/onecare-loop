@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your care — OneCare Loop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/onecare.css">
+<link rel="stylesheet" href="/static/css/ui.css">
+<style>
+  .hwrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 80px; }
+  .hhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .hbrand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .hbrand .word { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+  .hbrand .word .dot { color: var(--peach); }
+  .hlogout { background: none; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .hlogout:hover { color: var(--text-primary); border-color: var(--border-strong); }
+  .greet { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 6px; color: var(--text-primary); }
+  .greet-sub { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+
+  .companion {
+    background: linear-gradient(135deg, rgba(45,212,168,0.08), rgba(255,176,136,0.04));
+    border: 1px solid rgba(45,212,168,0.25);
+    border-radius: var(--r-xl);
+    padding: 24px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .companion::before { content: ""; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, rgba(45,212,168,0.2), transparent 70%); pointer-events: none; }
+  .companion-tag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); margin-bottom: 14px; }
+  .companion-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: ch-pulse 2s infinite; }
+  @keyframes ch-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .companion h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 10px; color: var(--text-primary); line-height: 1.3; }
+  .companion .story { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 20px; }
+  .companion .action-block { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
+  .companion .action-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--teal-dim); color: var(--teal); display: grid; place-items: center; flex-shrink: 0; font-size: 16px; }
+  .companion .action-body { flex: 1; min-width: 0; }
+  .companion .action-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); margin-bottom: 3px; }
+  .companion .action-value { font-size: 14.5px; font-weight: 600; color: var(--text-primary); line-height: 1.35; }
+  .companion .action-extra { font-size: 12px; color: var(--teal); font-family: var(--font-mono); margin-top: 4px; }
+  .companion .help { font-size: 12px; color: var(--text-tertiary); margin-top: 14px; line-height: 1.55; font-style: italic; }
+  .companion .honest { font-size: 10.5px; color: var(--text-tertiary); margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border-subtle); line-height: 1.5; font-family: var(--font-mono); }
+
+  .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .action-card { padding: 16px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); text-decoration: none; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px; transition: border-color 200ms ease, transform 200ms ease; }
+  .action-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .action-card .ac-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--teal-dim); color: var(--teal); display: grid; place-items: center; font-size: 14px; }
+  .action-card .ac-title { font-size: 13px; font-weight: 600; }
+  .action-card .ac-sub { font-size: 11px; color: var(--text-tertiary); }
+
+  .onboarding { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-xl); padding: 32px 24px; margin-bottom: 24px; position: relative; }
+  .onboarding-step { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); }
+  .onboarding-step:last-of-type { border-bottom: none; }
+  .onboarding-step .n { width: 28px; height: 28px; border-radius: 50%; background: var(--teal-dim); color: var(--teal); display: grid; place-items: center; font-family: var(--font-head); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .onboarding-step .b { flex: 1; }
+  .onboarding-step h4 { font-size: 14px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
+  .onboarding-step p { font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+
+  .empty-start { text-align: center; padding: 40px 20px; border: 1px dashed var(--border-strong); border-radius: var(--r-lg); margin-bottom: 24px; }
+  .empty-start h3 { font-size: 1.1rem; margin-bottom: 8px; }
+  .empty-start p { font-size: 13.5px; color: var(--text-secondary); max-width: 40ch; margin: 0 auto 20px; line-height: 1.55; }
+  .small-note { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-top: 24px; line-height: 1.6; }
+  .small-note a { color: var(--teal); }
+</style>
+</head>
+<body>
+<div class="hwrap">
+
+  <div class="hhead">
+    <a href="/patient" class="hbrand">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#2DD4A8" stroke-width="2.5" stroke-dasharray="22 11" stroke-linecap="round"/>
+        <rect x="14.5" y="10" width="3" height="12" rx="1" fill="#E8EEF4"/>
+        <rect x="10" y="14.5" width="12" height="3" rx="1" fill="#E8EEF4"/>
+      </svg>
+      <span class="word">onecare<span class="dot">.</span>loop</span>
+    </a>
+    <button class="hlogout" onclick="logout()">Sign out</button>
+  </div>
+
+  <h1 class="greet" id="greet">Welcome back</h1>
+  <p class="greet-sub" id="greet-sub">Loading your care status…</p>
+
+  <div class="companion" id="companion" style="display:none;">
+    <div class="companion-tag">Care companion</div>
+    <h2 id="companion-headline">—</h2>
+    <p class="story" id="companion-story">—</p>
+    <div class="action-block">
+      <div class="action-icon" id="action-icon">→</div>
+      <div class="action-body">
+        <div class="action-label">Next step</div>
+        <div class="action-value" id="action-value">—</div>
+        <div class="action-extra" id="action-extra" style="display:none;"></div>
+      </div>
+    </div>
+    <p class="help" id="companion-help"></p>
+    <p class="honest" id="companion-honest"></p>
+  </div>
+
+  <div class="onboarding" id="onboarding" style="display:none;">
+    <h3 style="font-size:1.05rem;margin:0 0 16px;color:var(--text-primary);">Your journey, in four steps</h3>
+    <div class="onboarding-step">
+      <div class="n">1</div>
+      <div class="b"><h4>Get screened</h4><p>A pharmacist checks your blood pressure in under a minute. No appointment needed.</p></div>
+    </div>
+    <div class="onboarding-step">
+      <div class="n">2</div>
+      <div class="b"><h4>We find you a clinic</h4><p>If your BP is high, we send a referral to a partner clinic. They accept within 24 hours.</p></div>
+    </div>
+    <div class="onboarding-step">
+      <div class="n">3</div>
+      <div class="b"><h4>You see a clinician</h4><p>Your appointment is booked and confirmed. The clinician records what happened.</p></div>
+    </div>
+    <div class="onboarding-step">
+      <div class="n">4</div>
+      <div class="b"><h4>You get a receipt</h4><p>Every step is provable. Share the receipt with anyone you trust — even a future clinic.</p></div>
+    </div>
+
+    <div class="empty-start" style="margin-top:24px;border:none;padding:0;">
+      <button class="btn btn-primary btn-lg" onclick="startDemo()" id="start-demo-btn">
+        Try a complete journey →
+      </button>
+      <p class="small-note">Creates 6 real events through the state machine. Nothing faked.</p>
+    </div>
+  </div>
+
+  <div class="action-grid" id="action-grid" style="display:none;">
+    <a href="/patient/receipt" class="action-card">
+      <div class="ac-icon">✓</div>
+      <div class="ac-title">Your receipt</div>
+      <div class="ac-sub">See every event, verified</div>
+    </a>
+    <a href="/verify" class="action-card" target="_blank">
+      <div class="ac-icon">⛓</div>
+      <div class="ac-title">Public verify</div>
+      <div class="ac-sub">Share proof with anyone</div>
+    </a>
+    <a href="#" class="action-card" onclick="alert('Support coming in the next update');return false;">
+      <div class="ac-icon">☎</div>
+      <div class="ac-title">Get help</div>
+      <div class="ac-sub">Contact a care navigator</div>
+    </a>
+    <a href="#" class="action-card" onclick="alert('Appointment view coming in the next update');return false;">
+      <div class="ac-icon">📅</div>
+      <div class="ac-title">Appointments</div>
+      <div class="ac-sub">Upcoming and past visits</div>
+    </a>
+  </div>
+
+  <p class="small-note" id="footer-note">Your data is encrypted. Only your care team can see your name.</p>
+
+</div>
+
+<script src="/static/js/ui.js"></script>
+<script>
+const PATIENT_ID = "{{ patient_id }}";
+
+async function load() {
+  try {
+    const r = await fetch("/patient/companion");
+    if (!r.ok) throw new Error("could not load your status");
+    const j = await r.json();
+
+    document.getElementById("greet").textContent = j.greeting;
+    document.getElementById("greet-sub").textContent = "Here's where things stand today.";
+
+    const isFirstRun = j.current_state === "NONE";
+
+    if (isFirstRun) {
+      document.getElementById("onboarding").style.display = "block";
+      document.getElementById("companion").style.display = "block";
+      document.getElementById("action-grid").style.display = "none";
+    } else {
+      document.getElementById("onboarding").style.display = "none";
+      document.getElementById("companion").style.display = "block";
+      document.getElementById("action-grid").style.display = "grid";
+    }
+
+    document.getElementById("companion-headline").textContent = j.headline;
+    document.getElementById("companion-story").textContent = j.story;
+    document.getElementById("action-value").textContent = j.action;
+    if (j.action_extra) {
+      document.getElementById("action-extra").style.display = "block";
+      document.getElementById("action-extra").textContent = j.action_extra;
+    } else {
+      document.getElementById("action-extra").style.display = "none";
+    }
+    document.getElementById("companion-help").textContent = j.help;
+    document.getElementById("companion-honest").textContent = j.honest_note;
+
+    const iconMap = {
+      "wait": "⏳", "find_pharmacy": "🏥", "view_appointment": "📅",
+      "view_followup": "🗓", "reschedule": "↻", "contact": "☎",
+    };
+    document.getElementById("action-icon").textContent = iconMap[j.action_type] || "→";
+
+    document.getElementById("footer-note").textContent =
+      "Companion is rule-based today · reads only your recorded events · never diagnoses.";
+  } catch (e) {
+    document.getElementById("greet-sub").textContent = e.message;
+  }
+}
+
+async function startDemo() {
+  const btn = document.getElementById("start-demo-btn");
+  btn.disabled = true;
+  btn.textContent = "Running the loop…";
+  try {
+    const r = await fetch("/patient/seed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient_id: PATIENT_ID }),
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.message || j.error);
+    if (window.UI && UI.Toast) UI.Toast.show(`${j.events} events recorded`, "success");
+    setTimeout(() => location.href = "/patient/receipt", 400);
+  } catch (e) {
+    if (window.UI && UI.Toast) UI.Toast.show(e.message, "error");
+    btn.disabled = false;
+    btn.textContent = "Try a complete journey →";
+  }
+}
+
+async function logout() {
+  await fetch("/patient/logout", { method: "POST" });
+  window.location.href = "/";
+}
+
+load();
+</script>
+</body>
+</html>

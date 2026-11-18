@@ -1,0 +1,91 @@
+{% extends "app/base.html" %}
+{% block title %}Pharmacy — OneCare Loop{% endblock %}
+{% block page_title %}New screening{% endblock %}
+{% block content %}
+<div style="max-width:640px;">
+  <div class="page-head"><div><h2>Screen a patient</h2><p>HTN-PROTOCOL-v1 · Works at licensed pharmacies and PMVs</p></div></div>
+  <div style="margin-bottom:16px;padding:10px 14px;background:rgba(45,212,168,0.06);border-left:3px solid var(--teal);border-radius:6px;font-size:12.5px;color:var(--text-secondary);line-height:1.65;">
+    In Nigeria, <strong>Patent Medicine Vendors (PMVs)</strong> see more patients before anyone else. This screening surface works at a pharmacy counter or a PMV stall — the protocol and channel are recorded in the event payload, so the audit chain tells you which one.
+  </div>
+  <div class="card" id="form-card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label class="field"><span class="field-label">Systolic (mmHg)</span><input class="input" type="number" id="systolic" value="168" min="40" max="300"></label>
+      <label class="field"><span class="field-label">Diastolic (mmHg)</span><input class="input" type="number" id="diastolic" value="104" min="20" max="200"></label>
+    </div>
+    <div id="bp-warn" class="muted" style="font-size:12.5px;margin-bottom:12px;"></div>
+    <label class="field"><span class="field-label">Phone</span><input class="input" id="phone" value="+2348099990003"></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label class="field"><span class="field-label">Insurance</span>
+        <select class="select" id="insurance"><option value="nhia">NHIA</option><option value="self_pay">Self-pay</option></select>
+      </label>
+      <label class="field"><span class="field-label">NHIA number</span><input class="input" id="nhia_number" value="NHIA-DEMO"></label>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-bottom:16px;">
+      <input type="checkbox" id="consent" checked style="margin-top:4px;">
+      <span>Patient consents to screening, referral, follow-up contact, and anonymized outcome review.</span>
+    </label>
+    <button class="btn btn-primary btn-full btn-lg" id="submit-btn">Submit screening →</button>
+  </div>
+  <div class="card" id="result-card" style="display:none;margin-top:16px;">
+    <div class="pill pill-green" style="margin-bottom:12px;">✓ Loop started</div>
+    <div style="display:grid;gap:6px;font-family:var(--font-mono);font-size:12px;">
+      <div><span class="muted">Patient</span> <span id="r-patient"></span></div>
+      <div><span class="muted">Referral</span> <span id="r-referral"></span></div>
+      <div><span class="muted">Urgency</span> <span id="r-urgency"></span></div>
+      <div><span class="muted">Eligibility</span> <span id="r-eligibility"></span></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <a href="/app/patients" class="btn btn-outline btn-sm">View patients →</a>
+      <a href="/app/referrals" class="btn btn-outline btn-sm">Referral queue →</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const $ = id => document.getElementById(id);
+function warn() {
+  const s = +$('systolic').value, d = +$('diastolic').value;
+  const w = $('bp-warn');
+  if (s>=180||d>=120) { w.textContent = '⚠ Red flag: BP ≥ 180/120. Emergency referral.'; w.style.color = 'var(--danger)'; }
+  else if (s>=140||d>=90) { w.textContent = 'Positive screening (≥ 140/90). Refer for assessment.'; w.style.color = 'var(--warning)'; }
+  else { w.textContent = ''; }
+}
+$('systolic').oninput = warn; $('diastolic').oninput = warn; warn();
+
+$('submit-btn').onclick = async () => {
+  if (!$('consent').checked) { toast('Consent is required', 'error'); return; }
+  const btn = $('submit-btn');
+  btn.disabled = true; btn.textContent = 'Screening…';
+  try {
+    const ins = $('insurance').value;
+    const s = await (await fetch('/api/screening', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        patient: {age_band:'40-49', insurance_type: ins, nhia_number: ins==='nhia'?$('nhia_number').value:null, phone: $('phone').value},
+        consent: {version:'1.0', scope:['screening','referral','follow_up']},
+        screening: {pharmacy_id:'PHARM-A', systolic:+$('systolic').value, diastolic:+$('diastolic').value, symptoms:[], protocol_version:'HTN-PROTOCOL-v1'},
+        actor_id: 'pharmacy@onecare.demo',
+      }),
+    })).json();
+    if (!s.ok) throw new Error(s.message || s.error);
+    const ref = await (await fetch('/api/referral', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({screening_id: s.screening.id, facility_id:'HOSP-A', actor_id:'pharmacy@onecare.demo'}),
+    })).json();
+    if (!ref.ok) throw new Error(ref.message || ref.error);
+    $('form-card').style.display = 'none';
+    $('result-card').style.display = 'block';
+    $('r-patient').textContent = s.patient_id.slice(0,10)+'…';
+    $('r-referral').textContent = ref.referral_id.slice(0,10)+'…';
+    $('r-urgency').textContent = ref.urgency;
+    $('r-eligibility').textContent = ref.eligibility.decision;
+    toast('Screening + referral recorded', 'success');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit screening →';
+  }
+};
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "app/base.html" %}
+{% block title %}Referrals — OneCare Loop{% endblock %}
+{% block page_title %}Referrals{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Referral queue</h2>
+    <p>Every open loop across your network, sorted by urgency.</p>
+  </div>
+  <a href="/demo/pharmacy" class="btn btn-primary btn-sm">+ New screening</a>
+</div>
+<div class="table-wrap" id="ref-table"><div class="empty"><h3>Loading…</h3></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(async function(){
+  const q = await (await fetch('/api/hospital/queue')).json();
+  const el = document.getElementById('ref-table');
+  if (!q.queue.length) { el.innerHTML = '<div class="empty"><h3>No open referrals</h3><p>Start a screening from the pharmacy surface.</p></div>'; return; }
+  el.innerHTML = `<table class="data-table"><thead><tr><th>Patient</th><th>BP</th><th>Urgency</th><th>SLA</th><th>State</th><th></th></tr></thead><tbody>${
+    q.queue.map(r => {
+      const urg = r.urgency === 'emergency' ? 'pill-red' : r.urgency === 'urgent' ? 'pill-amber' : 'pill-green';
+      return `<tr><td class="mono">${r.patient_id.slice(0,8)}…</td><td class="mono">${r.systolic}/${r.diastolic}</td><td><span class="pill ${urg}">${r.urgency}</span></td><td class="mono" style="font-size:11.5px;">${new Date(r.sla_deadline).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td><td class="mono" style="font-size:11px;color:var(--text-secondary);">${r.status}</td><td><a href="/demo/hospital?ref=${r.id}" class="btn btn-sm btn-outline">Open →</a></td></tr>`;
+    }).join('')
+  }</tbody></table>`;
+})();
+</script>
+{% endblock %}

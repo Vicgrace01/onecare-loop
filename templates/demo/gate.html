@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose your surface — OneCare Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/onecare.css') }}">
+</head>
+<body>
+<main class="gate">
+  <div class="mb-6 text-center">
+    <h1>Choose your surface</h1>
+    <p class="muted">Same product. Four windows into the same loop.</p>
+  </div>
+  <div class="gate-grid">
+    <a href="/demo/pharmacy" class="gate-card">
+      <div class="gate-card-icon">◉</div>
+      <div class="gate-card-title">Pharmacy</div>
+      <p class="gate-card-desc">Screen a patient at the last mile. Capture BP, symptoms, consent. Fire the first event.</p>
+    </a>
+    <a href="/demo/hospital" class="gate-card">
+      <div class="gate-card-icon">✚</div>
+      <div class="gate-card-title">Hospital</div>
+      <p class="gate-card-desc">Accept, book, attest, counter-refer. Close the loop in six states.</p>
+    </a>
+    <a href="/demo/patient" class="gate-card">
+      <div class="gate-card-icon">❦</div>
+      <div class="gate-card-title">Patient</div>
+      <p class="gate-card-desc">See your proof of care—every step, every hash. WhatsApp-style thread.</p>
+    </a>
+    <a href="/demo/admin" class="gate-card">
+      <div class="gate-card-icon">⊞</div>
+      <div class="gate-card-title">Admin</div>
+      <p class="gate-card-desc">Break the chain. Watch it cascade. Restore. See the dashboard.</p>
+    </a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,256 @@
+/* =========================================================================
+   ONECARE LOOP — MOTION LAYER
+   Custom cursor · smooth scroll state · magnetic buttons · motion states
+   Loaded after ui.css. Never overrides layout.
+   ========================================================================= */
+
+/* ---------- Hide native cursor on desktop (fallback keeps it if no JS) ---------- */
+@media (pointer: fine) {
+  html.has-custom-cursor,
+  html.has-custom-cursor body,
+  html.has-custom-cursor a,
+  html.has-custom-cursor button,
+  html.has-custom-cursor input,
+  html.has-custom-cursor textarea,
+  html.has-custom-cursor select,
+  html.has-custom-cursor [role="button"] {
+    cursor: none;
+  }
+}
+
+/* ---------- Custom cursor ---------- */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+  mix-blend-mode: difference;
+}
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-primary);
+  transition: width 200ms ease, height 200ms ease, background 200ms ease;
+}
+.cursor-ring {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--text-primary);
+  opacity: 0.6;
+  transition: width 300ms var(--ease-out), height 300ms var(--ease-out),
+              border-color 300ms ease, opacity 300ms ease, background 300ms ease;
+}
+.cursor-dot.hovering { width: 10px; height: 10px; background: var(--teal); }
+.cursor-ring.hovering {
+  width: 56px; height: 56px;
+  border-color: var(--teal);
+  opacity: 1;
+}
+.cursor-ring.text { width: 4px; height: 28px; border-radius: 2px; }
+.cursor-ring.pressed { width: 20px; height: 20px; background: var(--teal); opacity: 1; }
+
+/* ---------- Lenis smooth scroll ---------- */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* ---------- Split-text lines ---------- */
+.split-line { display: block; overflow: hidden; }
+.split-line > span {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform 900ms var(--ease-out);
+}
+.split-line.in > span { transform: translateY(0); }
+
+/* ---------- Reveal upgrade — GSAP will drive these too ---------- */
+.gs-reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  will-change: transform, opacity;
+}
+.gs-reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 900ms var(--ease-out), transform 900ms var(--ease-out);
+}
+
+/* ---------- Magnetic buttons — base state ---------- */
+.magnetic {
+  display: inline-flex;
+  position: relative;
+  will-change: transform;
+}
+
+/* ---------- Splash: extra layers ---------- */
+.s-hero {
+  overflow: hidden;
+  perspective: 1000px;
+}
+.s-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(45,212,168,0.06), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(255,176,136,0.04), transparent 45%);
+  pointer-events: none;
+  animation: s-ambient-shift 25s ease-in-out infinite;
+}
+@keyframes s-ambient-shift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -3%); }
+}
+
+/* Particle canvas background */
+#particles-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  animation: fade-in 2s ease-out 500ms forwards;
+}
+@keyframes fade-in { to { opacity: 1; } }
+
+/* Splash illustration — GSAP enhanced (CSS provides hidden start) */
+.s-illustration {
+  position: relative;
+  z-index: 1;
+}
+.s-illustration svg {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Headline word spans — GSAP overwrites, this is the no-JS fallback */
+.s-headline .w {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* Hash ticker line on splash */
+.s-hash-ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  margin-top: 16px;
+  opacity: 0;
+  z-index: 1;
+  position: relative;
+}
+.s-hash-ticker .tick-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal);
+  animation: tick-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tick-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+.s-hash-ticker .tick-label { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+.s-hash-ticker .tick-hash { color: var(--teal); opacity: 0.8; }
+
+/* ---------- Receipt: chain draw states ---------- */
+.rnode .c {
+  transform: scale(0.4);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.rnode.done .c.drawn {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 600ms var(--ease-spring), opacity 300ms ease;
+}
+.rconn {
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.rconn.drawn {
+  transform: scaleX(1);
+  transition: transform 500ms var(--ease-out);
+}
+
+.rmsg {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+.rmsg.drawn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+}
+.rmsg.drawn .rmsg-hash {
+  animation: hash-glow 800ms var(--ease-out) 200ms;
+}
+@keyframes hash-glow {
+  0% { background: rgba(45,212,168,0.4); color: var(--bg-base); }
+  100% { background: transparent; color: var(--teal); }
+}
+
+/* Verified badge SVG checkmark */
+.verify-badge-svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.verify-badge-svg path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  transition: stroke-dashoffset 600ms var(--ease-out);
+}
+.verified-drawn .verify-badge-svg path {
+  stroke-dashoffset: 0;
+}
+
+/* ---------- Page transition curtain ---------- */
+.page-curtain {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-base);
+  z-index: 10000;
+  pointer-events: none;
+  transform: scaleY(0);
+  transform-origin: top;
+}
+.page-curtain.entering {
+  animation: curtain-enter 500ms var(--ease-out) forwards;
+}
+.page-curtain.exiting {
+  animation: curtain-exit 500ms var(--ease-out) forwards;
+}
+@keyframes curtain-enter {
+  from { transform: scaleY(1); transform-origin: top; }
+  to { transform: scaleY(0); transform-origin: top; }
+}
+@keyframes curtain-exit {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to { transform: scaleY(1); transform-origin: bottom; }
+}
+
+/* ---------- Reduced motion — kill everything ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .cursor-dot, .cursor-ring { display: none !important; }
+  html.has-custom-cursor,
+  html.has-custom-cursor body,
+  html.has-custom-cursor * { cursor: auto !important; }
+  .gs-reveal, .gs-reveal.in { opacity: 1; transform: none; transition: none; }
+  .split-line > span { transform: none; transition: none; }
+  .rnode .c, .rnode.done .c.drawn { transform: none; opacity: 1; transition: none; }
+  .rconn, .rconn.drawn { transform: none; transition: none; }
+  .rmsg, .rmsg.drawn { opacity: 1; transform: none; transition: none; }
+  #particles-canvas { display: none; }
+  .page-curtain { display: none; }
+}

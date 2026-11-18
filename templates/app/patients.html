@@ -1,0 +1,37 @@
+{% extends "app/base.html" %}
+{% block title %}Patients — OneCare Loop{% endblock %}
+{% block page_title %}Patients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>All patients</h2><p>Grouped by current loop state.</p></div>
+</div>
+<div class="table-wrap" id="tbl"><div class="empty"><h3>Loading…</h3></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(async function(){
+  const [exp, verify] = await Promise.all([
+    fetch('/api/audit/export').then(r => r.text()),
+    fetch('/api/audit/verify').then(r => r.json()),
+  ]);
+  const events = exp.split('\n').filter(Boolean).map(l => JSON.parse(l));
+  const byPatient = {};
+  events.forEach(e => { (byPatient[e.patient_id] ||= []).push(e); });
+  const vmap = {}; (verify.patients || []).forEach(p => vmap[p.patient_id] = p);
+  const el = document.getElementById('tbl');
+  const rows = Object.entries(byPatient).sort((a,b) => b[1].length - a[1].length);
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty"><h3>No patients yet</h3><p>Screen one from <a href="/demo/pharmacy">the pharmacy surface</a>.</p></div>';
+    return;
+  }
+  el.innerHTML = `<table class="data-table"><thead><tr><th>Patient</th><th>Current state</th><th>Events</th><th>Chain</th><th>Last seen</th></tr></thead><tbody>${
+    rows.map(([pid, evs]) => {
+      const last = evs[evs.length-1];
+      const v = vmap[pid] || {};
+      const chainPill = v.ok === false ? '<span class="pill pill-red">broken</span>' : '<span class="pill pill-green">verified</span>';
+      return `<tr><td class="mono">${pid.slice(0,10)}…</td><td class="mono" style="font-size:11.5px;">${last.event_type}</td><td>${evs.length}</td><td>${chainPill}</td><td class="mono" style="font-size:11.5px;color:var(--text-secondary);">${new Date(last.occurred_at).toLocaleString()}</td></tr>`;
+    }).join('')
+  }</tbody></table>`;
+})();
+</script>
+{% endblock %}

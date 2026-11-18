@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active = "admin" %}
+{% block title %}Admin — OneCare Loop{% endblock %}
+{% block content %}
+<div class="container" style="padding-top: var(--space-8); padding-bottom: var(--space-12);">
+
+  <div class="mb-6">
+    <h2 style="margin-bottom: 4px;">Population dashboard</h2>
+    <p class="muted" style="font-size: 13.5px; margin: 0;">Closure rate, time-to-care, failure breakdown, chain integrity.</p>
+  </div>
+
+  <div class="stat-grid mb-6" id="stats"></div>
+
+  <div class="card mb-6">
+    <div class="flex justify-between items-center" style="flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4);">
+      <h3 style="margin: 0;">Chain integrity</h3>
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-danger" id="tamper-btn">Break the chain</button>
+        <button class="btn btn-sm btn-green" id="restore-btn">Restore</button>
+      </div>
+    </div>
+    <div id="chain-status" style="font-size: 13px; color: var(--slate); margin-bottom: var(--space-3);">Loading events…</div>
+    <div id="chain-blocks"></div>
+  </div>
+
+  <div class="card mb-6">
+    <h3>Failure breakdown</h3>
+    <div id="failures" style="margin-top: var(--space-4);"></div>
+  </div>
+
+  <div class="card">
+    <div class="flex justify-between items-center" style="margin-bottom: var(--space-3);">
+      <h3 style="margin: 0;">Coming soon</h3>
+      <span class="state-pill state-info">Phased</span>
+    </div>
+    <ul class="muted" style="font-size: 13.5px; padding-left: var(--space-4); line-height: 1.9;">
+      <li><strong>Live DHIN API</strong> — mocked in demo with real FHIR schema</li>
+      <li><strong>Ambulance dispatch</strong> — designed, not shipped</li>
+      <li><strong>Claims submission</strong> — needs payer integration</li>
+      <li><strong>Multi-disease</strong> — hypertension only for pilot</li>
+      <li><strong>USSD fallback</strong> — SMS first, USSD next</li>
+      <li><strong>Voice-note instructions</strong> — low-literacy expansion</li>
+      <li><strong>Provider reputation (public)</strong> — internal metric live now</li>
+    </ul>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/buttons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

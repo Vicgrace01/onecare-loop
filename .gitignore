@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Database (regenerated at startup)
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Local dumps & one-off scripts (also deleted pre-push by cleanup script)
+codebase.txt
+project_snapshot.txt
+templates_dump.txt
+*_copy.txt
+fix_*.py
+apply_fixes.py
+*_patch.py
+*_polish.py
+final_polish.py
+god_tier_*.py
+snapshot.py
+verify_all.py
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temp
+tmp/
+temp/
+scratch/
