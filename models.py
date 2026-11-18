@@ -432,7 +432,7 @@ def connect_db() -> sqlite3.Connection:
 
 def init_db(app: Flask) -> None:
     with app.app_context():
-        conn = connect_db()
+        conn = init_db()
         try:
             conn.executescript(SCHEMA)
             ensure_column(conn, "patients", "display_name", "TEXT")
