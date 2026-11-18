@@ -1,22 +1,18 @@
 """
 OneCare Loop — models.py
 
-Schema version: 3
-  v1 → v2 adds:
-    - actor_keys table (Ed25519 signing material)
-    - key_store table (wrapped AES keys for crypto-shredding)
-    - loop_events.actor_signature, loop_events.actor_public_key columns
-  v2 → v3 adds:
-    - otp_tokens table (phone-OTP login for patient portal)
-  v3 → v4 adds:
-    - red_flag_acks table (human acknowledgment of red-flag alerts)
-    - case_messages table (clinician-to-clinician consultation)
-  v4 → v5 adds:
-    - patients.display_name (was referenced but never in schema)
+Schema version: 4
+Works on SQLite (local dev) and PostgreSQL (production / Neon).
+
+Dialect compatibility:
+  - BLOB → BYTEA (Postgres has no BLOB type)
+  - INSERT OR IGNORE → ON CONFLICT DO NOTHING (both dialects support)
+  - signature + display_name columns baked into base CREATE TABLE
 """
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import datetime, timezone
 
@@ -24,7 +20,7 @@ from flask import Flask, current_app
 
 
 GENESIS_HASH = "0" * 64
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 4
 
 
 def _utc_now() -> str:
@@ -69,11 +65,11 @@ CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id, role);
 
 CREATE TABLE IF NOT EXISTS patients (
     id TEXT PRIMARY KEY,
-    display_name TEXT,
     age_band TEXT,
     insurance_type TEXT,
     nhia_number TEXT,
     consent_at TEXT,
+    display_name TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -246,6 +242,8 @@ CREATE TABLE IF NOT EXISTS loop_events (
     hash TEXT NOT NULL,
     occurred_at TEXT NOT NULL,
     recorded_at TEXT NOT NULL,
+    actor_signature TEXT,
+    actor_public_key TEXT,
     UNIQUE(patient_id, seq)
 );
 
@@ -280,7 +278,7 @@ CREATE TABLE IF NOT EXISTS care_artifacts (
     id TEXT PRIMARY KEY,
     event_id TEXT NOT NULL REFERENCES loop_events(id),
     artifact_type TEXT NOT NULL,
-    encrypted_blob BLOB NOT NULL,
+    encrypted_blob BYTEA NOT NULL,
     hash TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -355,8 +353,6 @@ CREATE TABLE IF NOT EXISTS tamper_backups (
     created_at TEXT NOT NULL
 );
 
--- v2 additions ------------------------------------------------------------
-
 CREATE TABLE IF NOT EXISTS actor_keys (
     actor_id TEXT PRIMARY KEY,
     private_pem TEXT NOT NULL,
@@ -372,8 +368,6 @@ CREATE TABLE IF NOT EXISTS key_store (
     created_at TEXT NOT NULL
 );
 
--- v3 additions ------------------------------------------------------------
-
 CREATE TABLE IF NOT EXISTS otp_tokens (
     id TEXT PRIMARY KEY,
     patient_id TEXT NOT NULL REFERENCES patients(id),
@@ -386,45 +380,15 @@ CREATE TABLE IF NOT EXISTS otp_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_otp_patient
     ON otp_tokens(patient_id, created_at);
-
--- v4 additions ------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS red_flag_acks (
-    alert_id TEXT PRIMARY KEY,
-    acknowledged_by TEXT NOT NULL,
-    acknowledged_at TEXT NOT NULL,
-    note TEXT
-);
-
-CREATE TABLE IF NOT EXISTS case_messages (
-    id TEXT PRIMARY KEY,
-    referral_id TEXT NOT NULL REFERENCES referrals(id),
-    from_user_id TEXT NOT NULL,
-    from_role TEXT NOT NULL,
-    body TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_case_messages_referral
-    ON case_messages(referral_id, created_at);
 """
-
-
-
-import os
-import psycopg
-from psycopg.rows import dict_row
-
-# ... keep GENESIS_HASH, SCHEMA_VERSION, _utc_now(), and SCHEMA above ...
 
 
 def connect_db():
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        # Local fallback — SQLite still works for dev
-        import sqlite3
+        # Local dev fallback — SQLite
         conn = sqlite3.connect(
-            os.environ.get("ONECARE_DB", "onecare.db"),
+            current_app.config.get("DATABASE", "onecare.db"),
             timeout=10,
             isolation_level=None,
         )
@@ -432,7 +396,10 @@ def connect_db():
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
-    # Neon / Postgres path
+    # Postgres / Neon
+    import psycopg
+    from psycopg.rows import dict_row
+
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     conn = psycopg.connect(database_url, row_factory=dict_row)
@@ -440,24 +407,29 @@ def connect_db():
     return conn
 
 
-def init_db(app):
+def init_db(app: Flask) -> None:
     with app.app_context():
         conn = connect_db()
         try:
-            # For SQLite, execute the full schema.
-            # For Postgres, execute it too — the SQL is compatible (TEXT, INTEGER, etc.)
-            cur = conn.cursor()
-            cur.execute(SCHEMA)
-            # Add v2 / v3 columns if missing (idempotent)
-            try:
-                cur.execute("ALTER TABLE loop_events ADD COLUMN IF NOT EXISTS actor_signature TEXT")
-                cur.execute("ALTER TABLE loop_events ADD COLUMN IF NOT EXISTS actor_public_key TEXT")
-                cur.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS display_name TEXT")
-            except Exception:
-                pass
-            cur.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                (SCHEMA_VERSION, _utc_now()),
-            )
+            database_url = os.environ.get("DATABASE_URL")
+            cur = conn.cursor() if database_url else conn
+            cur.execute(SCHEMA) if not database_url else cur.execute(SCHEMA)
+
+            if database_url:
+                # Postgres: seed migration row idempotently
+                cur.execute(
+                    "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (SCHEMA_VERSION, _utc_now()),
+                )
+            else:
+                # SQLite
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                    (SCHEMA_VERSION, _utc_now()),
+                )
         finally:
             conn.close()
+
+
+if __name__ == "__main__":
+    print(SCHEMA)
