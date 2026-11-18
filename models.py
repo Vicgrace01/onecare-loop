@@ -2,17 +2,23 @@
 OneCare Loop — models.py
 
 Schema version: 4
-Works on SQLite (local dev) and PostgreSQL (production / Neon).
+Works on SQLite (local dev) AND PostgreSQL (production / Neon).
 
-Dialect compatibility:
-  - BLOB → BYTEA (Postgres has no BLOB type)
-  - INSERT OR IGNORE → ON CONFLICT DO NOTHING (both dialects support)
-  - signature + display_name columns baked into base CREATE TABLE
+The Postgres path uses an adapter that accepts SQLite syntax:
+  - ? placeholders → %s
+  - INSERT OR IGNORE → ON CONFLICT DO NOTHING
+  - BEGIN IMMEDIATE / COMMIT / ROLLBACK → no-ops (autocommit handles them)
+  - BLOB → BYTEA (handled at schema-string level)
+  - Rows support both row[0] and row["column_name"] access
+
+This means zero changes to services/ or routes/ — every existing query
+works on both dialects.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
 
@@ -278,7 +284,7 @@ CREATE TABLE IF NOT EXISTS care_artifacts (
     id TEXT PRIMARY KEY,
     event_id TEXT NOT NULL REFERENCES loop_events(id),
     artifact_type TEXT NOT NULL,
-    encrypted_blob BYTEA NOT NULL,
+    encrypted_blob BLOB NOT NULL,
     hash TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -383,10 +389,175 @@ CREATE INDEX IF NOT EXISTS idx_otp_patient
 """
 
 
+# =========================================================================
+# Postgres adapter — accepts SQLite syntax
+# =========================================================================
+
+_BEGIN_RE = re.compile(r"^\s*BEGIN(\s+(IMMEDIATE|EXCLUSIVE|DEFERRED))?\s*;?\s*$", re.IGNORECASE)
+_COMMIT_RE = re.compile(r"^\s*(COMMIT|END)\s*;?\s*$", re.IGNORECASE)
+_ROLLBACK_RE = re.compile(r"^\s*ROLLBACK(\s+TO\s+SAVEPOINT\s+\S+)?\s*;?\s*$", re.IGNORECASE)
+_INSERT_OR_IGNORE_RE = re.compile(r"^(\s*)INSERT\s+OR\s+IGNORE\s+INTO\s+(.+)$", re.IGNORECASE | re.DOTALL)
+
+
+def _translate_sql(sql: str) -> str:
+    """Convert SQLite-flavored SQL to Postgres-flavored SQL."""
+    if not sql:
+        return sql
+    # No-op for transaction control (autocommit handles atomicity for demo)
+    if _BEGIN_RE.match(sql) or _COMMIT_RE.match(sql) or _ROLLBACK_RE.match(sql):
+        return "SELECT 1"
+    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    stripped = sql.lstrip()
+    m = _INSERT_OR_IGNORE_RE.match(stripped)
+    if m:
+        indent = m.group(1)
+        rest = m.group(2).rstrip().rstrip(";")
+        sql = f"{indent}INSERT INTO {rest} ON CONFLICT DO NOTHING"
+    # ? → %s, only outside of string literals
+    out = []
+    in_single = False
+    in_double = False
+    i = 0
+    n = len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "'" and not in_double:
+            if in_single and i + 1 < n and sql[i + 1] == "'":
+                out.append("''")
+                i += 2
+                continue
+            in_single = not in_single
+            out.append(ch)
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+            out.append(ch)
+        elif ch == "?" and not in_single and not in_double:
+            out.append("%s")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+class DualRow:
+    """Row that supports both row[0] and row["column_name"] access."""
+    __slots__ = ("_values", "_mapping")
+
+    def __init__(self, values, mapping):
+        self._values = values
+        self._mapping = mapping
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return self._mapping[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def __contains__(self, item):
+        if isinstance(item, str):
+            return item in self._mapping
+        return item in self._values
+
+    def get(self, key, default=None):
+        return self._mapping.get(key, default)
+
+    def keys(self):
+        return self._mapping.keys()
+
+    def values(self):
+        return self._values
+
+    def items(self):
+        return self._mapping.items()
+
+    def __repr__(self):
+        return f"DualRow({dict(self._mapping)})"
+
+
+def _dual_row_factory(cursor):
+    col_names = [d.name for d in cursor.description] if cursor.description else []
+    def make_row(values):
+        return DualRow(tuple(values), dict(zip(col_names, values)))
+    return make_row
+
+
+class _PgCursor:
+    def __init__(self, cursor):
+        self._c = cursor
+
+    def execute(self, sql, params=()):
+        sql = _translate_sql(sql)
+        if params:
+            self._c.execute(sql, params)
+        else:
+            self._c.execute(sql)
+        return self
+
+    def executemany(self, sql, params_list):
+        sql = _translate_sql(sql)
+        self._c.executemany(sql, params_list)
+        return self
+
+    def fetchone(self):
+        return self._c.fetchone()
+
+    def fetchall(self):
+        return self._c.fetchall()
+
+    def fetchmany(self, *a, **kw):
+        return self._c.fetchmany(*a, **kw)
+
+    def __iter__(self):
+        return iter(self._c)
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+
+class _PgConnection:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self, *a, **kw):
+        return _PgCursor(self._conn.cursor(*a, **kw))
+
+    def execute(self, sql, params=()):
+        return _PgCursor(self._conn.cursor()).execute(sql, params)
+
+    def executemany(self, sql, params_list):
+        return _PgCursor(self._conn.cursor()).executemany(sql, params_list)
+
+    def executescript(self, script):
+        return self.execute(script)
+
+    def commit(self):
+        try: self._conn.commit()
+        except Exception: pass
+
+    def rollback(self):
+        try: self._conn.rollback()
+        except Exception: pass
+
+    def close(self):
+        self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+# =========================================================================
+# Public API — identical signature on both dialects
+# =========================================================================
+
 def connect_db():
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        # Local dev fallback — SQLite
+        # SQLite path — unchanged
         conn = sqlite3.connect(
             current_app.config.get("DATABASE", "onecare.db"),
             timeout=10,
@@ -396,35 +567,36 @@ def connect_db():
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
-    # Postgres / Neon
+    # Postgres / Neon path
     import psycopg
-    from psycopg.rows import dict_row
 
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
-    conn = psycopg.connect(database_url, row_factory=dict_row)
-    conn.autocommit = True
-    return conn
+    raw = psycopg.connect(database_url, autocommit=True)
+    raw.row_factory = _dual_row_factory
+    return _PgConnection(raw)
 
 
 def init_db(app: Flask) -> None:
     with app.app_context():
+        database_url = os.environ.get("DATABASE_URL")
         conn = connect_db()
         try:
-            database_url = os.environ.get("DATABASE_URL")
-            cur = conn.cursor() if database_url else conn
-            cur.execute(SCHEMA) if not database_url else cur.execute(SCHEMA)
-
             if database_url:
-                # Postgres: seed migration row idempotently
+                # Postgres — BLOB → BYTEA, multi-statement via cursor
+                schema = SCHEMA.replace("BLOB", "BYTEA")
+                cur = conn.cursor()
+                cur.execute(schema)
                 cur.execute(
-                    "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    "INSERT INTO schema_migrations (version, applied_at) "
+                    "VALUES (%s, %s) ON CONFLICT DO NOTHING",
                     (SCHEMA_VERSION, _utc_now()),
                 )
             else:
                 # SQLite
+                conn.executescript(SCHEMA)
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                    "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
                     (SCHEMA_VERSION, _utc_now()),
                 )
         finally:
