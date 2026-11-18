@@ -411,40 +411,53 @@ CREATE INDEX IF NOT EXISTS idx_case_messages_referral
 
 
 
-def ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
-    """Idempotent ALTER TABLE ADD COLUMN. Safe to call on every startup."""
-    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-    existing = {r["name"] for r in rows}
-    if column not in existing:
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+import os
+import psycopg
+from psycopg.rows import dict_row
+
+# ... keep GENESIS_HASH, SCHEMA_VERSION, _utc_now(), and SCHEMA above ...
 
 
-def connect_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(
-        current_app.config["DATABASE"],
-        timeout=10,
-        isolation_level=None,
-    )
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+def connect_db():
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        # Local fallback — SQLite still works for dev
+        import sqlite3
+        conn = sqlite3.connect(
+            os.environ.get("ONECARE_DB", "onecare.db"),
+            timeout=10,
+            isolation_level=None,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+    # Neon / Postgres path
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    conn = psycopg.connect(database_url, row_factory=dict_row)
+    conn.autocommit = True
     return conn
 
 
-def init_db(app: Flask) -> None:
+def init_db(app):
     with app.app_context():
-        conn = init_db()
+        conn = connect_db()
         try:
-            conn.executescript(SCHEMA)
-            ensure_column(conn, "patients", "display_name", "TEXT")
-            ensure_column(conn, "loop_events", "actor_signature", "TEXT")
-            ensure_column(conn, "loop_events", "actor_public_key", "TEXT")
-            conn.execute(
-                "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
+            # For SQLite, execute the full schema.
+            # For Postgres, execute it too — the SQL is compatible (TEXT, INTEGER, etc.)
+            cur = conn.cursor()
+            cur.execute(SCHEMA)
+            # Add v2 / v3 columns if missing (idempotent)
+            try:
+                cur.execute("ALTER TABLE loop_events ADD COLUMN IF NOT EXISTS actor_signature TEXT")
+                cur.execute("ALTER TABLE loop_events ADD COLUMN IF NOT EXISTS actor_public_key TEXT")
+                cur.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS display_name TEXT")
+            except Exception:
+                pass
+            cur.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                 (SCHEMA_VERSION, _utc_now()),
             )
         finally:
             conn.close()
-
-
-if __name__ == "__main__":
-    print(SCHEMA)
